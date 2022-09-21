@@ -25,6 +25,7 @@ pub enum ConditionOperator {
     Or,
 }
 
+#[derive(PartialEq, PartialOrd)]
 pub enum ComparisonValue {
     Reference(String),
     Value(String),
@@ -35,21 +36,21 @@ pub enum ActionType {
     SendNotification { notification_id: String },
 }
 
-pub enum ExpressionType {
+pub enum Expression {
     Comparison(Comparison),
     Condition(Condition),
 }
 
 pub struct Comparison {
-    left: ComparisonValue,
-    right: ComparisonValue,
-    operator: ComparisonOperator,
+    pub left: ComparisonValue,
+    pub right: ComparisonValue,
+    pub operator: ComparisonOperator,
 }
 
 pub struct Condition {
-    left: Box<ExpressionType>,
-    right: Box<ExpressionType>,
-    operator: ConditionOperator,
+    pub left: Box<Expression>,
+    pub right: Box<Expression>,
+    pub operator: ConditionOperator,
 }
 
 pub struct Rule {
@@ -59,7 +60,7 @@ pub struct Rule {
 }
 
 impl Rule {
-    pub fn new_rule(chain: Chain, conditions: Condition, actions: Vec<ActionType>) -> Self {
+    pub fn new(chain: Chain, conditions: Condition, actions: Vec<ActionType>) -> Self {
         Rule { chain, conditions, actions }
     }
 
@@ -73,27 +74,5 @@ impl Rule {
 
     pub fn get_rule_actions(&self) -> &Vec<ActionType> {
         &self.actions
-    }
-}
-
-pub type RulesList = Vec<Rule>;
-
-trait RulesManager {
-    fn create_rule(&mut self, chain: Chain, conditions: Condition, actions: Vec<ActionType>) -> &Rule;
-    fn remove_rule(&mut self, rule_id: usize) -> Option<Rule>;
-}
-
-impl RulesManager for RulesList {
-    fn create_rule(&mut self, chain: Chain, conditions: Condition, actions: Vec<ActionType>) -> &Rule {
-        let rule = Rule::new_rule(chain, conditions, actions);
-        self.push(rule);
-        self.last().unwrap()
-    }
-
-    fn remove_rule(&mut self, rule_id: usize) -> Option<Rule> {
-        match self.get(rule_id) {
-            Some(_) => Some(self.remove(rule_id)),
-            None => None
-        }
     }
 }
