@@ -12,8 +12,8 @@ pub enum Value {
 }
 
 pub trait BlockchainDataType : Serialize {
-    fn get_block_hash(&self) -> &String;
-    fn get_block_index(&self) -> usize;
+    fn block_hash(&self) -> &String;
+    fn block_index(&self) -> usize;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,11 +25,11 @@ pub struct Transaction {
 }
 
 impl BlockchainDataType for Transaction {
-    fn get_block_hash(&self) -> &String {
+    fn block_hash(&self) -> &String {
         &self.block_hash
     }
 
-    fn get_block_index(&self) -> usize {
+    fn block_index(&self) -> usize {
         self.block_index
     }
 }
@@ -44,11 +44,11 @@ pub struct Event {
 }
 
 impl BlockchainDataType for Event {
-    fn get_block_hash(&self) -> &String {
+    fn block_hash(&self) -> &String {
         &self.block_hash
     }
 
-    fn get_block_index(&self) -> usize {
+    fn block_index(&self) -> usize {
         self.block_index
     }
 }

@@ -18,8 +18,8 @@ fn check_condition(object: &impl BlockchainDataType, condition: &Condition) -> b
 }
 
 fn check_comparison(object: &impl BlockchainDataType, comparison: &Comparison) -> bool {
-    let left = get_comparison_value(&comparison.left, object);
-    let right = get_comparison_value(&comparison.right, object);
+    let left = retrieve_comparison_value(&comparison.left, object);
+    let right = retrieve_comparison_value(&comparison.right, object);
     match comparison.operator {
         ComparisonOperator::Equal => return left.eq(&right),
         ComparisonOperator::NotEqual => return left.ne(&right),
@@ -31,7 +31,10 @@ fn check_comparison(object: &impl BlockchainDataType, comparison: &Comparison) -
     }
 }
 
-fn get_comparison_value(comparison_value: &ComparisonValue, object: &impl BlockchainDataType) -> String {
+fn retrieve_comparison_value(
+    comparison_value: &ComparisonValue,
+    object: &impl BlockchainDataType,
+) -> String {
     match comparison_value {
         ComparisonValue::Reference(reference) => Selector::new()
             .path(&reference)

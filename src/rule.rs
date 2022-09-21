@@ -64,15 +64,15 @@ impl Rule {
         Rule { chain, conditions, actions }
     }
 
-    pub fn get_rule_chain(&self) -> &Chain {
+    pub fn rule_chain(&self) -> &Chain {
         &self.chain
     }
 
-    pub fn get_rule_conditions(&self) -> &Condition {
+    pub fn rule_conditions(&self) -> &Condition {
         &self.conditions
     }
 
-    pub fn get_rule_actions(&self) -> &Vec<ActionType> {
+    pub fn rule_actions(&self) -> &Vec<ActionType> {
         &self.actions
     }
 }
