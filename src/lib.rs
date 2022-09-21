@@ -1,4 +1,4 @@
-mod rule;
-mod blockchain_data_types;
-mod rules_manager;
-mod rules_engine;
+pub mod rule;
+pub mod blockchain_data_types;
+pub mod rules_manager;
+pub mod rules_engine;
