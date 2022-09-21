@@ -13,7 +13,7 @@ fn check_condition(object: &impl BlockchainDataType, condition: &Condition) -> b
     let right = check_expression(object, &condition.right);
     match condition.operator {
         ConditionOperator::And => return left && right,
-        _ => return left || right,
+        ConditionOperator::Or => return left || right,
     }
 }
 
