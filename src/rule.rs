@@ -16,8 +16,8 @@ pub enum ComparisonOperator {
     GreaterThanOrEqual,
     LessThan,
     LessThanOrEqual,
-    In,
-    NotIn,
+    // In,
+    // NotIn,
 }
 
 pub enum ConditionOperator {
