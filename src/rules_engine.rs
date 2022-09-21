@@ -12,8 +12,8 @@ fn check_condition(object: &impl BlockchainDataType, condition: &Condition) -> b
     let left = check_expression(object, &condition.left);
     let right = check_expression(object, &condition.right);
     match condition.operator {
-        ConditionOperator::And => return left && right,
-        ConditionOperator::Or => return left || right,
+        ConditionOperator::And => left && right,
+        ConditionOperator::Or => left || right,
     }
 }
 
@@ -21,12 +21,12 @@ fn check_comparison(object: &impl BlockchainDataType, comparison: &Comparison) -
     let left = retrieve_comparison_value(&comparison.left, object);
     let right = retrieve_comparison_value(&comparison.right, object);
     match comparison.operator {
-        ComparisonOperator::Equal => return left.eq(&right),
-        ComparisonOperator::NotEqual => return left.ne(&right),
-        ComparisonOperator::GreaterThan => return left.gt(&right),
-        ComparisonOperator::GreaterThanOrEqual => return left.ge(&right),
-        ComparisonOperator::LessThan => return left.lt(&right),
-        ComparisonOperator::LessThanOrEqual => return left.le(&right),
+        ComparisonOperator::Equal => left.eq(&right),
+        ComparisonOperator::NotEqual => left.ne(&right),
+        ComparisonOperator::GreaterThan => left.gt(&right),
+        ComparisonOperator::GreaterThanOrEqual => left.ge(&right),
+        ComparisonOperator::LessThan => left.lt(&right),
+        ComparisonOperator::LessThanOrEqual => left.le(&right),
         // TODO: implement ComparisonOperator::In and ComparisonOperator::NotIn
     }
 }
