@@ -1,6 +1,10 @@
 use crate::{blockchain_data_types::*, rule::*};
 use jsonpath_lib::Selector;
 
+pub fn check_rule_object_match(rule: &Rule, object: &impl BlockchainDataType) -> bool {
+    check_condition(object, rule.rule_conditions())
+}
+
 pub fn check_expression(object: &impl BlockchainDataType, expression: &Expression) -> bool {
     match expression {
         Expression::Comparison(comparison) => check_comparison(object, comparison),
@@ -46,5 +50,3 @@ fn retrieve_comparison_value(
         ComparisonValue::Value(value) => value.to_string(),
     }
 }
-
-// TODO: Add a loop over rules to check if any of the rules is matched
