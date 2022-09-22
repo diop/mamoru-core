@@ -1,8 +1,4 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+pub mod rule;
+pub mod blockchain_data_types;
+pub mod rules_manager;
+pub mod rules_engine;
