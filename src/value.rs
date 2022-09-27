@@ -20,11 +20,10 @@ impl From<SerdeValue> for Value {
         match value {
             SerdeValue::Null => Value::Null,
             SerdeValue::Bool(bool) => Value::Bool(bool),
-            SerdeValue::Number(number) => 
-                match number.as_u64() {
-                    Some(number) => Value::Number(number),
-                    None => Value::String(number.to_string()),
-                },
+            SerdeValue::Number(number) => match number.as_u64() {
+                Some(number) => Value::Number(number),
+                None => Value::String(number.to_string()),
+            },
             SerdeValue::String(string) => Value::String(string),
             SerdeValue::Array(vec) => {
                 Value::Array(vec.into_iter().map(|x| Self::from(x)).collect())
@@ -46,11 +45,34 @@ impl Into<SerdeValue> for Value {
             Value::String(string) => SerdeValue::String(string),
             Value::Array(vec) => {
                 SerdeValue::Array(vec.into_iter().map(|x| Self::into(x)).collect())
-            },
+            }
             Value::Object(map) => {
                 // SerdeValue::Object(map.into_iter().map(|x| (x.0, Self::into(x.1))).collect())
                 SerdeValue::String(map)
             }
+        }
+    }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        use Value::*;
+        match (self, other) {
+            (Null, Null) => true,
+            (Bool(a), Bool(b)) => a == b,
+            (Number(a), Number(b)) => a == b,
+            (String(a), String(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        use Value::*;
+        match (self, other) {
+            (Number(a), Number(b)) => Some(a.cmp(b)),
+            _ => None,
         }
     }
 }
