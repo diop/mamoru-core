@@ -1,3 +1,5 @@
+use crate::value::Value;
+
 pub enum Chain {
     AptosTestnet,
     AptosMainnet,
@@ -25,10 +27,9 @@ pub enum ConditionOperator {
     Or,
 }
 
-#[derive(PartialEq, PartialOrd)]
 pub enum ComparisonValue {
     Reference(String),
-    Value(String),
+    Value(Value),
 }
 
 pub enum ActionType {
@@ -61,7 +62,11 @@ pub struct Rule {
 
 impl Rule {
     pub fn new(chain: Chain, conditions: Condition, actions: Vec<ActionType>) -> Self {
-        Rule { chain, conditions, actions }
+        Rule {
+            chain,
+            conditions,
+            actions,
+        }
     }
 
     pub fn rule_chain(&self) -> &Chain {
