@@ -44,7 +44,8 @@ fn check_comparison(
         ComparisonOperator::GreaterThanOrEqual => left.ge(&right),
         ComparisonOperator::LessThan => left.lt(&right),
         ComparisonOperator::LessThanOrEqual => left.le(&right),
-        // TODO: implement ComparisonOperator::In and ComparisonOperator::NotIn
+        ComparisonOperator::In => left.is_in(&right),
+        ComparisonOperator::NotIn => left.not_in(&right),
     };
     Ok(comparison_result)
 }

@@ -9,10 +9,7 @@ pub enum Value {
     Number(u64),
     String(String),
     Array(Vec<Value>),
-    Object(
-        // HashMap<String, Value>
-        String,
-    ),
+    Object(HashMap<String, Value>),
 }
 
 impl From<SerdeValue> for Value {
@@ -29,8 +26,7 @@ impl From<SerdeValue> for Value {
                 Value::Array(vec.into_iter().map(|x| Self::from(x)).collect())
             }
             SerdeValue::Object(map) => {
-                // Value::Object(map.into_iter().map(|x| (x.0, Self::from(x.1))).collect())
-                Value::Object("test".to_string())
+                Value::Object(map.into_iter().map(|x| (x.0, Self::from(x.1))).collect())
             }
         }
     }
@@ -47,8 +43,7 @@ impl Into<SerdeValue> for Value {
                 SerdeValue::Array(vec.into_iter().map(|x| Self::into(x)).collect())
             }
             Value::Object(map) => {
-                // SerdeValue::Object(map.into_iter().map(|x| (x.0, Self::into(x.1))).collect())
-                SerdeValue::String(map)
+                SerdeValue::Object(map.into_iter().map(|x| (x.0, Self::into(x.1))).collect())
             }
         }
     }
@@ -74,5 +69,77 @@ impl PartialOrd for Value {
             (Number(a), Number(b)) => Some(a.cmp(b)),
             _ => None,
         }
+    }
+}
+
+impl Value {
+    pub fn is_in(&self, value: &Value) -> bool {
+        use Value::*;
+        match (self, value) {
+            (Array(_vector_1), Array(_vector_2)) => false,
+            (Object(_object), Array(_vector)) => false,
+            (other, Array(vector)) => match vector.iter().find(|x| x.eq(&other)) {
+                Some(_) => true,
+                None => false,
+            },
+            (_, _) => false,
+        }
+    }
+
+    pub fn not_in(&self, value: &Value) -> bool {
+        !self.is_in(value)
+    }
+}
+
+#[cfg(test)]
+mod value_tests {
+    use super::*;
+
+    #[test]
+    fn test_is_in() {
+        let vector = Value::Array(vec![
+            Value::Number(1),
+            Value::Number(2),
+            Value::Number(3),
+            Value::Number(4),
+        ]);
+
+        let number = Value::Number(3);
+        assert!(number.is_in(&vector));
+
+        let boolean = Value::Bool(true);
+        assert!(!boolean.is_in(&vector));
+
+        let vector_2 = vector.clone();
+        assert!(!vector_2.is_in(&vector));
+
+        let object = Value::Object(HashMap::from([(String::from("test"), Value::Number(1))]));
+        assert!(!object.is_in(&vector));
+
+        assert!(!boolean.is_in(&number));
+    }
+
+    #[test]
+    fn test_not_in() {
+        let vector = Value::Array(vec![
+            Value::Number(1),
+            Value::Number(2),
+            Value::Number(3),
+            Value::Number(4),
+        ]);
+
+        let number = Value::Number(5);
+        assert!(number.not_in(&vector));
+
+        let boolean = Value::Bool(true);
+        assert!(boolean.not_in(&vector));
+
+        let vector_2 = vector.clone();
+        assert!(vector_2.not_in(&vector));
+
+        let object = Value::Object(HashMap::from([(String::from("test"), Value::Number(1))]));
+        assert!(object.not_in(&vector));
+
+        assert!(boolean.not_in(&number));
     }
 }
