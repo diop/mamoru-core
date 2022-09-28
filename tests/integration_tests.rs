@@ -82,12 +82,12 @@ fn rule_object_matching_happy_flow() {
         HashMap::new(),
     );
 
-    assert_eq!(check_rule_object_match(&rule, &transaction).unwrap(), true);
-    assert_eq!(check_rule_object_match(&rule, &event).unwrap(), true);
+    assert!(check_rule_object_match(&rule, &transaction).unwrap());
+    assert!(check_rule_object_match(&rule, &event).unwrap());
 }
 
 #[test]
-#[should_panic(expected = "There is no such path as $.event_id")]
+#[should_panic(expected = "NoPath(\"$.event_id\")")]
 fn rule_transaction_matching_non_existent_reference() {
     //true
     let comparison1 = Comparison {
@@ -168,5 +168,5 @@ fn rule_transaction_matching_different_value_types() {
         HashMap::new(),
     );
 
-    assert_eq!(check_rule_object_match(&rule, &transaction).unwrap(), false);
+    assert!(!check_rule_object_match(&rule, &transaction).unwrap());
 }
