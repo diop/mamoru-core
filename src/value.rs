@@ -22,9 +22,7 @@ impl From<SerdeValue> for Value {
                 None => Value::String(number.to_string()),
             },
             SerdeValue::String(string) => Value::String(string),
-            SerdeValue::Array(vec) => {
-                Value::Array(vec.into_iter().map(|x| Self::from(x)).collect())
-            }
+            SerdeValue::Array(vec) => Value::Array(vec.into_iter().map(Self::from).collect()),
             SerdeValue::Object(map) => {
                 Value::Object(map.into_iter().map(|x| (x.0, Self::from(x.1))).collect())
             }
@@ -32,18 +30,16 @@ impl From<SerdeValue> for Value {
     }
 }
 
-impl Into<SerdeValue> for Value {
-    fn into(self) -> SerdeValue {
-        match self {
+impl From<Value> for SerdeValue {
+    fn from(value: Value) -> Self {
+        match value {
             Value::Null => SerdeValue::Null,
             Value::Bool(bool) => SerdeValue::Bool(bool),
             Value::Number(number) => SerdeValue::Number(serde_json::Number::from(number)),
             Value::String(string) => SerdeValue::String(string),
-            Value::Array(vec) => {
-                SerdeValue::Array(vec.into_iter().map(|x| Self::into(x)).collect())
-            }
+            Value::Array(vec) => SerdeValue::Array(vec.into_iter().map(Self::from).collect()),
             Value::Object(map) => {
-                SerdeValue::Object(map.into_iter().map(|x| (x.0, Self::into(x.1))).collect())
+                SerdeValue::Object(map.into_iter().map(|x| (x.0, Self::from(x.1))).collect())
             }
         }
     }
@@ -78,10 +74,7 @@ impl Value {
         match (self, value) {
             (Array(_vector_1), Array(_vector_2)) => false,
             (Object(_object), Array(_vector)) => false,
-            (other, Array(vector)) => match vector.iter().find(|x| x.eq(&other)) {
-                Some(_) => true,
-                None => false,
-            },
+            (other, Array(vector)) => vector.iter().any(|x| x.eq(other)),
             (_, _) => false,
         }
     }
