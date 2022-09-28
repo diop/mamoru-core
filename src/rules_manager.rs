@@ -1,4 +1,4 @@
-use crate::rule::*;
+use crate::rule::{ActionType, Chain, Condition, Rule};
 
 pub type RulesList = Vec<Rule>;
 
