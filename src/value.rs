@@ -89,7 +89,7 @@ mod value_tests {
     use super::*;
 
     #[test]
-    fn test_is_in() {
+    fn is_in_operator() {
         let vector = Value::Array(vec![
             Value::Number(1),
             Value::Number(2),
@@ -113,7 +113,7 @@ mod value_tests {
     }
 
     #[test]
-    fn test_not_in() {
+    fn not_in_operator() {
         let vector = Value::Array(vec![
             Value::Number(1),
             Value::Number(2),
