@@ -43,7 +43,7 @@ jobs:
             "linting": "${{ needs.linting.result == 'success' && '✅' || '❌' }}",
             "build": "${{ needs.build.result == 'success' && '✅' || '❌' }}",
             "tests": "${{ needs.tests.result == 'success' && '✅' || '❌' }}",
-            "run link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "run_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
       env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
