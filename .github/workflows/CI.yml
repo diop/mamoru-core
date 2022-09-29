@@ -1,0 +1,48 @@
+name: CI
+on: push
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run linting
+        run: |
+          cargo fmt -- --check
+          cargo clippy
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --verbose
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        run: cargo test --verbose
+
+  slack-notify:
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    needs:
+      - linting
+      - build
+      - tests
+    steps:
+      - uses: slackapi/slack-github-action@v1.22.0
+        with:
+          payload: |
+            {
+                "branch": "${{ github.ref_name }}",
+                "linting": "${{ needs.linting.result == 'success' && '✅' || '❌' }}",
+                "build": "${{ needs.build.result == 'success' && '✅' || '❌' }}",
+                "tests": "${{ needs.tests.result == 'success' && '✅' || '❌' }}",
+                "run_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
