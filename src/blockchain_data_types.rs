@@ -4,13 +4,13 @@ use std::collections::HashMap;
 
 pub trait BlockchainDataType: Serialize {
     fn block_hash(&self) -> &String;
-    fn block_index(&self) -> usize;
+    fn block_index(&self) -> u64;
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Transaction {
     block_hash: String,
-    block_index: usize,
+    block_index: u64,
     transaction_hash: String,
     payload: HashMap<String, Value>,
 }
@@ -20,7 +20,7 @@ impl BlockchainDataType for Transaction {
         &self.block_hash
     }
 
-    fn block_index(&self) -> usize {
+    fn block_index(&self) -> u64 {
         self.block_index
     }
 }
@@ -28,7 +28,7 @@ impl BlockchainDataType for Transaction {
 impl Transaction {
     pub fn new(
         block_hash: String,
-        block_index: usize,
+        block_index: u64,
         transaction_hash: String,
         payload: HashMap<String, Value>,
     ) -> Self {
@@ -44,9 +44,9 @@ impl Transaction {
 #[derive(Serialize, Deserialize)]
 pub struct Event {
     block_hash: String,
-    block_index: usize,
+    block_index: u64,
     transaction_hash: String,
-    event_id: usize,
+    event_id: u64,
     payload: HashMap<String, Value>,
 }
 
@@ -55,7 +55,7 @@ impl BlockchainDataType for Event {
         &self.block_hash
     }
 
-    fn block_index(&self) -> usize {
+    fn block_index(&self) -> u64 {
         self.block_index
     }
 }
@@ -63,9 +63,9 @@ impl BlockchainDataType for Event {
 impl Event {
     pub fn new(
         block_hash: String,
-        block_index: usize,
+        block_index: u64,
         transaction_hash: String,
-        event_id: usize,
+        event_id: u64,
         payload: HashMap<String, Value>,
     ) -> Self {
         Event {

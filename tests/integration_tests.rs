@@ -7,166 +7,161 @@ use mamoru_core::{
     value::Value,
 };
 
-#[test]
-fn rule_object_matching_happy_flow() {
-    //true
-    let comparison1 = Comparison {
-        left: ComparisonValue::Value(Value::String(String::from(
-            "0xf499bd6a4171ba03afca2cf56518e5aa557db9866d002109b3adb31bf184646a",
-        ))),
-        right: ComparisonValue::Reference(String::from("$.transaction_hash")),
-        operator: ComparisonOperator::NotEqual,
-    };
+const BLOCK_HASH: &str = "0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309";
+const TX_HASH: &str = "0x489a7cecb58805e24407722b30e9f4c23827b6d1b63254dbe91654b32c8acf64";
+const BLOCK_INDEX: u64 = 12546;
+const EVENT_ID: u64 = 9876;
 
-    //true
-    let comparison2 = Comparison {
-        left: ComparisonValue::Reference(String::from("$.block_hash")),
-        right: ComparisonValue::Value(Value::String(String::from(
-            "0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309",
-        ))),
-        operator: ComparisonOperator::Equal,
-    };
+fn create_transaction(block_hash: &str, block_index: u64, tx_hash: &str) -> Transaction {
+    Transaction::new(
+        String::from(block_hash),
+        block_index,
+        String::from(tx_hash),
+        HashMap::new(),
+    )
+}
 
-    //false
-    let comparison3 = Comparison {
-        left: ComparisonValue::Value(Value::String(String::from(
-            "0x2de857b3eb22ad4f758e6639c7ba4a5f744db465902e25ba9d66da5c7f5efaeb",
-        ))),
-        right: ComparisonValue::Reference(String::from("$.transaction_hash")),
-        operator: ComparisonOperator::Equal,
-    };
+fn create_default_transaction() -> Transaction {
+    create_transaction(BLOCK_HASH, BLOCK_INDEX, TX_HASH)
+}
 
-    //true
-    let comparison4 = Comparison {
-        left: ComparisonValue::Reference(String::from("$.block_index")),
-        right: ComparisonValue::Value(Value::Number(125)),
-        operator: ComparisonOperator::GreaterThan,
-    };
+fn create_event(block_hash: &str, block_index: u64, tx_hash: &str, event_id: u64) -> Event {
+    Event::new(
+        String::from(block_hash),
+        block_index,
+        String::from(tx_hash),
+        event_id,
+        HashMap::new(),
+    )
+}
 
-    let condition1 = Condition {
-        left: Box::new(Expression::Comparison(comparison1)),
-        right: Box::new(Expression::Comparison(comparison2)),
-        operator: ConditionOperator::And,
-    };
-    let condition2 = Condition {
-        left: Box::new(Expression::Comparison(comparison3)),
-        right: Box::new(Expression::Comparison(comparison4)),
-        operator: ConditionOperator::Or,
-    };
-    let condition3 = Condition {
-        left: Box::new(Expression::Condition(condition1)),
-        right: Box::new(Expression::Condition(condition2)),
-        operator: ConditionOperator::And,
-    };
+fn create_default_event() -> Event {
+    create_event(BLOCK_HASH, BLOCK_INDEX, TX_HASH, EVENT_ID)
+}
 
-    let rule = Rule::new(
+fn create_reference_value_comparison(
+    reference: &str,
+    value: Value,
+    operator: ComparisonOperator,
+) -> Comparison {
+    Comparison {
+        left: ComparisonValue::Reference(String::from(reference)),
+        right: ComparisonValue::Value(value),
+        operator,
+    }
+}
+
+fn create_default_true_comparison() -> Comparison {
+    create_reference_value_comparison(
+        "$.transaction_hash",
+        Value::String(String::from(BLOCK_HASH)),
+        ComparisonOperator::NotEqual,
+    )
+}
+
+fn create_default_false_comparison() -> Comparison {
+    create_reference_value_comparison(
+        "$.transaction_hash",
+        Value::String(String::from(TX_HASH)),
+        ComparisonOperator::Equal,
+    )
+}
+
+fn create_simple_condition(
+    left: Comparison,
+    right: Comparison,
+    operator: ConditionOperator,
+) -> Condition {
+    Condition {
+        left: Box::new(Expression::Comparison(left)),
+        right: Box::new(Expression::Comparison(right)),
+        operator,
+    }
+}
+
+fn create_complex_condition(
+    left: Condition,
+    right: Comparison,
+    operator: ConditionOperator,
+) -> Condition {
+    Condition {
+        left: Box::new(Expression::Condition(left)),
+        right: Box::new(Expression::Comparison(right)),
+        operator,
+    }
+}
+
+fn create_rule(condition: Condition) -> Rule {
+    Rule::new(
         Chain::AptosTestnet,
-        condition3,
+        condition,
         vec![ActionType::SendNotification {
             notification_id: String::from("Notification ID"),
         }],
+    )
+}
+
+#[test]
+fn rule_object_matching_happy_flow() {
+    let comparison_true = create_reference_value_comparison(
+        "$.block_hash",
+        Value::String(String::from(BLOCK_HASH)),
+        ComparisonOperator::Equal,
     );
 
-    let transaction = Transaction::new(
-        String::from("0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309"),
-        12546,
-        String::from("0x123..."),
-        HashMap::new(),
+    let condition_simple_true = create_simple_condition(
+        create_default_true_comparison(),
+        create_default_false_comparison(),
+        ConditionOperator::Or,
     );
 
-    let event = Event::new(
-        String::from("0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309"),
-        12546,
-        String::from("0x123..."),
-        9876,
-        HashMap::new(),
+    let condition_complex_true = create_complex_condition(
+        condition_simple_true,
+        comparison_true,
+        ConditionOperator::And,
     );
 
-    assert!(check_rule_object_match(&rule, &transaction).unwrap());
-    assert!(check_rule_object_match(&rule, &event).unwrap());
+    let rule = create_rule(condition_complex_true);
+
+    assert!(check_rule_object_match(&rule, &create_default_transaction()).unwrap());
+    assert!(check_rule_object_match(&rule, &create_default_event()).unwrap());
 }
 
 #[test]
 #[should_panic(expected = "NoPath(\"$.event_id\")")]
 fn rule_transaction_matching_non_existent_reference() {
-    //true
-    let comparison1 = Comparison {
-        left: ComparisonValue::Value(Value::String(String::from(
-            "0xf499bd6a4171ba03afca2cf56518e5aa557db9866d002109b3adb31bf184646a",
-        ))),
-        right: ComparisonValue::Reference(String::from("$.transaction_hash")),
-        operator: ComparisonOperator::NotEqual,
-    };
-
-    //Error
-    let comparison2 = Comparison {
-        left: ComparisonValue::Reference(String::from("$.event_id")),
-        right: ComparisonValue::Value(Value::Number(125)),
-        operator: ComparisonOperator::LessThan,
-    };
-
-    let condition = Condition {
-        left: Box::new(Expression::Comparison(comparison1)),
-        right: Box::new(Expression::Comparison(comparison2)),
-        operator: ConditionOperator::And,
-    };
-
-    let rule = Rule::new(
-        Chain::AptosTestnet,
-        condition,
-        vec![ActionType::SendNotification {
-            notification_id: String::from("Notification ID"),
-        }],
+    let comparison_non_existent_tx_reference = create_reference_value_comparison(
+        "$.event_id",
+        Value::Number(125),
+        ComparisonOperator::LessThan,
     );
 
-    let transaction = Transaction::new(
-        String::from("0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309"),
-        12546,
-        String::from("0x123..."),
-        HashMap::new(),
+    let condition = create_simple_condition(
+        create_default_true_comparison(),
+        comparison_non_existent_tx_reference,
+        ConditionOperator::And,
     );
 
-    check_rule_object_match(&rule, &transaction).unwrap();
+    let rule = create_rule(condition);
+
+    check_rule_object_match(&rule, &create_default_transaction()).unwrap();
 }
 
 #[test]
 fn rule_transaction_matching_different_value_types() {
-    //true
-    let comparison1 = Comparison {
-        left: ComparisonValue::Value(Value::String(String::from(
-            "0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309",
-        ))),
-        right: ComparisonValue::Reference(String::from("$.block_hash")),
-        operator: ComparisonOperator::Equal,
-    };
-
-    //false
-    let comparison2 = Comparison {
-        left: ComparisonValue::Reference(String::from("$.block_index")),
-        right: ComparisonValue::Value(Value::Bool(true)),
-        operator: ComparisonOperator::LessThan,
-    };
-
-    let condition = Condition {
-        left: Box::new(Expression::Comparison(comparison1)),
-        right: Box::new(Expression::Comparison(comparison2)),
-        operator: ConditionOperator::And,
-    };
-
-    let rule = Rule::new(
-        Chain::AptosTestnet,
-        condition,
-        vec![ActionType::SendNotification {
-            notification_id: String::from("Notification ID"),
-        }],
+    let comparison_different_value_types = create_reference_value_comparison(
+        "$.block_index",
+        Value::Bool(true),
+        ComparisonOperator::LessThan,
     );
 
-    let transaction = Transaction::new(
-        String::from("0xa79b2d2f1d4f0ec73a9a107525b6d08738e01f6c55b44d3fbb04246707d22309"),
-        12546,
-        String::from("0x123..."),
-        HashMap::new(),
+    let condition = create_simple_condition(
+        create_default_true_comparison(),
+        comparison_different_value_types,
+        ConditionOperator::And,
     );
 
-    assert!(!check_rule_object_match(&rule, &transaction).unwrap());
+    let rule = create_rule(condition);
+
+    assert!(!check_rule_object_match(&rule, &create_default_transaction()).unwrap());
 }
