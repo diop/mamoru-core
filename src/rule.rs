@@ -1,5 +1,5 @@
 use crate::{
-    blockchain_data_types::{Transaction},
+    blockchain_data_types::{Block, Transaction},
     errors::RetrieveValueError,
     rules_engine,
     value::Value,
@@ -90,8 +90,9 @@ impl Rule {
     pub fn verify(
         &self,
         transaction: &Transaction,
+        _block: Option<Block>,
     ) -> Result<VerificationRuleContext, RetrieveValueError> {
-        let matched = todo!();
+        let matched = rules_engine::check_expression(transaction, self.rule_expression())?;
         Ok(VerificationRuleContext {
             matched,
             evaluated_expression: self.rule_expression().clone(),
