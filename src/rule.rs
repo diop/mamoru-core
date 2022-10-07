@@ -1,16 +1,11 @@
-use crate::value::Value;
+use crate::{
+    blockchain_data_types::{Transaction},
+    errors::RetrieveValueError,
+    rules_engine,
+    value::Value,
+};
 
-pub enum Chain {
-    AptosTestnet,
-    AptosMainnet,
-    MistenTestnet,
-    MistenMainnet,
-    SolanaTestnet,
-    SolanaMainnet,
-    NearTestnet,
-    NearMainnet,
-}
-
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ComparisonOperator {
     Equal,
     NotEqual,
@@ -22,62 +17,84 @@ pub enum ComparisonOperator {
     NotIn,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ConditionOperator {
     And,
     Or,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ComparisonValue {
     Reference(String),
     Value(Value),
 }
 
-pub enum ActionType {
-    SubmitTransaction { to: String, payload: String },
-    SendNotification { notification_id: String },
-}
-
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expression {
     Comparison(Comparison),
     Condition(Condition),
+    EventsSequence(Vec<Expression>),
+    CallTracesSequence(Vec<Expression>),
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Comparison {
     pub left: ComparisonValue,
     pub right: ComparisonValue,
     pub operator: ComparisonOperator,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Condition {
     pub left: Box<Expression>,
     pub right: Box<Expression>,
     pub operator: ConditionOperator,
 }
 
-pub struct Rule {
-    chain: Chain,
-    conditions: Condition,
-    actions: Vec<ActionType>,
+#[derive(Debug, Eq, PartialEq)]
+pub struct VerificationRuleContext {
+    matched: bool,
+    evaluated_expression: Expression,
 }
 
-impl Rule {
-    pub fn new(chain: Chain, conditions: Condition, actions: Vec<ActionType>) -> Self {
-        Rule {
-            chain,
-            conditions,
-            actions,
+impl VerificationRuleContext {
+    pub fn new(matched: bool, evaluated_expression: Expression) -> VerificationRuleContext {
+        VerificationRuleContext {
+            matched,
+            evaluated_expression,
         }
     }
 
-    pub fn rule_chain(&self) -> &Chain {
-        &self.chain
+    pub fn matched(&self) -> bool {
+        self.matched
     }
 
-    pub fn rule_conditions(&self) -> &Condition {
-        &self.conditions
+    pub fn evaluated_expression(&self) -> &Expression {
+        &self.evaluated_expression
+    }
+}
+
+pub struct Rule {
+    expression: Expression,
+}
+
+impl Rule {
+    pub fn new(expression: Expression) -> Self {
+        Rule { expression }
     }
 
-    pub fn rule_actions(&self) -> &Vec<ActionType> {
-        &self.actions
+    pub fn rule_expression(&self) -> &Expression {
+        &self.expression
+    }
+
+    pub fn verify(
+        &self,
+        transaction: &Transaction,
+    ) -> Result<VerificationRuleContext, RetrieveValueError> {
+        let matched = todo!();
+        Ok(VerificationRuleContext {
+            matched,
+            evaluated_expression: self.rule_expression().clone(),
+        })
     }
 }

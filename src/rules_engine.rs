@@ -2,14 +2,6 @@ use crate::{blockchain_data_types::BlockchainDataType, errors::RetrieveValueErro
 use serde_json;
 use std::result::Result;
 
-pub fn check_rule_object_match(
-    rule: &rule::Rule,
-    object: &impl BlockchainDataType,
-) -> Result<bool, RetrieveValueError> {
-    let matching_result = check_condition(object, rule.rule_conditions())?;
-    Ok(matching_result)
-}
-
 fn check_expression(
     object: &impl BlockchainDataType,
     expression: &rule::Expression,
@@ -17,6 +9,8 @@ fn check_expression(
     match expression {
         rule::Expression::Comparison(comparison) => check_comparison(object, comparison),
         rule::Expression::Condition(condition) => check_condition(object, condition),
+        rule::Expression::EventsSequence(_) => todo!(),
+        rule::Expression::CallTracesSequence(_) => todo!(),
     }
 }
 
