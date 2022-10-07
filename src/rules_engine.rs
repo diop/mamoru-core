@@ -61,7 +61,7 @@ fn retrieve_comparison_value(
             let v: Vec<serde_json::Value> =
                 jsonpath_lib::select_as(&serde_json::to_string(object)?, reference)?;
             match v.get(0) {
-                Some(reference_value) => value::Value::from(reference_value.clone()),
+                Some(reference_value) => value::Value::try_from(reference_value.clone())?,
                 None => return Err(RetrieveValueError::NoPath(reference.to_string())),
             }
         }
