@@ -1,6 +1,6 @@
 use crate::{
     blockchain_data_types::BlockchainDataType,
-    errors::{RetrieveValueError},
+    errors::RetrieveValueError,
     rule::{
         Comparison, ComparisonOperator, ComparisonValue, Condition, ConditionOperator, Expression,
     },
