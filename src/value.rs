@@ -22,7 +22,7 @@ pub enum Value {
     UInt256(U256),
     Binary(Vec<u8>),
     Array(Vec<Value>),
-    Object(HashMap<String, Value>)
+    Object(HashMap<String, Value>),
 }
 
 impl TryFrom<SerdeValue> for Value {
@@ -58,6 +58,7 @@ impl PartialEq for Value {
             ) => a == b,
             (Binary(a), Binary(b)) => a == b,
             (Array(a), Array(b)) => a == b,
+            (Object(a), Object(b)) => a == b,
             _ => false,
         }
     }
@@ -122,6 +123,10 @@ mod value_tests {
                 Value::Binary(vec![4, 5, 6]),
                 Value::Binary(vec![7, 8, 9]),
             ]),
+            Value::Object(HashMap::from([
+                ("first".to_string(), Value::UInt8(U256::from(255u8))),
+                ("second".to_string(), Value::Binary(vec![1, 2, 3])),
+            ])),
         ]);
         let serde_value: SerdeValue = value.clone().try_into().unwrap();
         let converted_value: Value = serde_value.try_into().unwrap();
@@ -176,6 +181,20 @@ mod value_tests {
         assert!(array.ne(&ne_array));
         assert!(array.eq(&eq_array));
 
+        let object = Value::Object(HashMap::from([
+            ("first".to_string(), int64.clone()),
+            ("second".to_string(), binary.clone()),
+        ]));
+        let ne_object = Value::Object(HashMap::from([
+            ("third".to_string(), int64.clone()),
+            ("second".to_string(), binary.clone()),
+        ]));
+        let eq_object = object.clone();
+
+        assert!(object.ne(&ne_object));
+        assert!(object.eq(&eq_object));
+
+        assert!(array.ne(&object));
         assert!(array.ne(&binary));
         assert!(ne_int64.ne(&ne_uint64));
     }
@@ -188,44 +207,65 @@ mod value_tests {
 
         let binary = Value::Binary(vec![8, 7, 6]);
 
-        let array = Value::Array(vec![int.clone(), uint.clone(), binary.clone()]);
+        let object = Value::Object(HashMap::from([("first".to_string(), binary.clone())]));
+
+        let array = Value::Array(vec![
+            int.clone(),
+            uint.clone(),
+            binary.clone(),
+            object.clone(),
+        ]);
 
         assert!(int.is_in(&array));
         assert!(int.not_in(&int));
         assert!(int.not_in(&uint));
         assert!(int.not_in(&binary));
+        assert!(int.not_in(&object));
 
         assert!(uint.is_in(&array));
         assert!(uint.not_in(&int));
         assert!(uint.not_in(&uint));
         assert!(uint.not_in(&binary));
+        assert!(uint.not_in(&object));
 
         assert!(binary.is_in(&array));
         assert!(binary.not_in(&int));
         assert!(binary.not_in(&uint));
         assert!(binary.not_in(&binary));
+        assert!(binary.not_in(&object));
+
+        assert!(object.is_in(&array));
+        assert!(object.not_in(&int));
+        assert!(object.not_in(&uint));
+        assert!(object.not_in(&binary));
+        assert!(object.not_in(&object));
 
         assert!(array.not_in(&array));
         assert!(array.not_in(&int));
         assert!(array.not_in(&uint));
         assert!(array.not_in(&binary));
+        assert!(array.not_in(&object));
     }
 
     #[test]
-    fn comparison() {
+    fn order() {
         let int32 = Value::Int32(I256::from(-123i32));
         let gt_int64 = Value::Int64(I256::from(-120i64));
         let lt_int128 = Value::Int128(I256::from(-125i128));
 
         assert!(gt_int64.gt(&int32));
+        assert!(gt_int64.ge(&int32));
         assert!(lt_int128.lt(&int32));
+        assert!(lt_int128.le(&int32));
 
         let uint32 = Value::UInt32(U256::from(123u32));
         let gt_uint64 = Value::UInt64(U256::from(125u64));
         let lt_uint128 = Value::UInt128(U256::from(120u128));
 
         assert!(gt_uint64.ge(&uint32));
+        assert!(gt_uint64.gt(&uint32));
         assert!(lt_uint128.le(&uint32));
+        assert!(lt_uint128.lt(&uint32));
 
         let binary = Value::Binary(vec![8, 7, 6]);
         let le_binary = Value::Binary(vec![1, 2, 3]);
@@ -244,13 +284,28 @@ mod value_tests {
         assert!(!array.le(&le_array));
         assert!(!array.gt(&le_array));
 
+        let object = Value::Object(HashMap::from([
+            ("first".to_string(), Value::UInt8(U256::from(255u8))),
+            ("second".to_string(), Value::Binary(vec![1, 2, 3])),
+        ]));
+        let le_object = Value::Object(HashMap::from([(
+            "third".to_string(),
+            Value::UInt8(U256::from(255u8)),
+        )]));
+
+        assert!(!object.le(&le_object));
+        assert!(!object.gt(&le_object));
+
         assert!(!int32.le(&uint32));
         assert!(!int32.lt(&binary));
         assert!(!int32.ge(&array));
+        assert!(!int32.gt(&object));
 
         assert!(!uint32.lt(&binary));
         assert!(!uint32.ge(&array));
+        assert!(!uint32.ge(&object));
 
         assert!(!binary.lt(&array));
+        assert!(!binary.lt(&object));
     }
 }
