@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ethnum::{I256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as SerdeValue;
@@ -20,6 +22,7 @@ pub enum Value {
     UInt256(U256),
     Binary(Vec<u8>),
     Array(Vec<Value>),
+    Object(HashMap<String, Value>)
 }
 
 impl TryFrom<SerdeValue> for Value {
