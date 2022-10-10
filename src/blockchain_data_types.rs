@@ -225,4 +225,3 @@ impl CallTrace {
         &self.calltrace_index
     }
 }
-
