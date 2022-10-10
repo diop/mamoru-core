@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 pub trait BlockchainDataType: Serialize {
     fn block_index(&self) -> &Value;
-    fn extra(&self) -> &HashMap<String, Value>;
+    fn extra(&self) -> &Value;
     fn events(&self) -> Result<&Vec<Event>, RetrieveValueError>;
     fn calltraces(&self) -> Result<&Vec<CallTrace>, RetrieveValueError>;
 }
@@ -15,7 +15,7 @@ pub struct Block {
     block_index: Value,
     time: Value,
     transactions: Vec<Transaction>,
-    extra: HashMap<String, Value>,
+    extra: Value,
 }
 
 impl BlockchainDataType for Block {
@@ -23,7 +23,7 @@ impl BlockchainDataType for Block {
         &self.block_index
     }
 
-    fn extra(&self) -> &HashMap<String, Value> {
+    fn extra(&self) -> &Value {
         &self.extra
     }
 
@@ -47,7 +47,7 @@ impl Block {
             block_index: Value::UInt128(U256::from(block_index)),
             time: Value::UInt64(U256::from(time)),
             transactions,
-            extra,
+            extra: Value::Object(extra),
         }
     }
 
@@ -67,7 +67,7 @@ pub struct Transaction {
     time: Value,
     events: Vec<Event>,
     calltraces: Vec<CallTrace>,
-    extra: HashMap<String, Value>,
+    extra: Value,
 }
 
 impl BlockchainDataType for Transaction {
@@ -75,7 +75,7 @@ impl BlockchainDataType for Transaction {
         &self.block_index
     }
 
-    fn extra(&self) -> &HashMap<String, Value> {
+    fn extra(&self) -> &Value {
         &self.extra
     }
 
@@ -103,7 +103,7 @@ impl Transaction {
             time: Value::UInt64(U256::from(time)),
             events,
             calltraces,
-            extra,
+            extra: Value::Object(extra),
         }
     }
 
@@ -122,7 +122,7 @@ pub struct Event {
     tx_index: Value,
     event_index: Value,
     event_id: Value,
-    extra: HashMap<String, Value>,
+    extra: Value,
 }
 
 impl BlockchainDataType for Event {
@@ -130,7 +130,7 @@ impl BlockchainDataType for Event {
         &self.block_index
     }
 
-    fn extra(&self) -> &HashMap<String, Value> {
+    fn extra(&self) -> &Value {
         &self.extra
     }
 
@@ -156,7 +156,7 @@ impl Event {
             tx_index: Value::UInt128(U256::from(tx_index)),
             event_index: Value::UInt128(U256::from(event_index)),
             event_id: Value::Binary(event_id),
-            extra,
+            extra: Value::Object(extra),
         }
     }
 
@@ -179,7 +179,7 @@ pub struct CallTrace {
     tx_index: Value,
     calltrace_index: Value,
     events: Vec<Event>,
-    extra: HashMap<String, Value>,
+    extra: Value,
 }
 
 impl BlockchainDataType for CallTrace {
@@ -187,7 +187,7 @@ impl BlockchainDataType for CallTrace {
         &self.block_index
     }
 
-    fn extra(&self) -> &HashMap<String, Value> {
+    fn extra(&self) -> &Value {
         &self.extra
     }
 
@@ -213,7 +213,7 @@ impl CallTrace {
             tx_index: Value::UInt128(U256::from(tx_index)),
             calltrace_index: Value::UInt128(U256::from(calltrace_index)),
             events,
-            extra,
+            extra: Value::Object(extra),
         }
     }
 
@@ -225,3 +225,4 @@ impl CallTrace {
         &self.calltrace_index
     }
 }
+
