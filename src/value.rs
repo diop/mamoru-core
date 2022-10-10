@@ -28,8 +28,7 @@ pub enum Value {
 impl TryFrom<SerdeValue> for Value {
     type Error = RetrieveValueError;
     fn try_from(value: SerdeValue) -> Result<Self, Self::Error> {
-        let serialized_value = serde_json::to_string(&value)?;
-        let deserialized_value: Value = serde_json::from_str(&serialized_value)?;
+        let deserialized_value: Value = serde_json::from_value(value)?;
         Ok(deserialized_value)
     }
 }
@@ -134,7 +133,9 @@ mod value_tests {
     }
 
     #[test]
-    #[should_panic(expected = "SerializationError(Error(\"expected value\", line: 1, column: 1))")]
+    #[should_panic(
+        expected = "SerializationError(Error(\"invalid type: sequence, expected string or map\", line: 0, column: 0))"
+    )]
     fn value_convertion_random_serdevalue_to_value() {
         let serialized_value = serde_json::to_string(&[5; 5]).unwrap();
         let serde_value: SerdeValue = serde_json::from_str(&serialized_value).unwrap();

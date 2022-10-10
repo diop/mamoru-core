@@ -180,7 +180,9 @@ fn rule_tx_matching_non_existent_reference() {
 }
 
 #[test]
-#[should_panic(expected = "SerializationError(Error(\"expected value\", line: 1, column: 1))")]
+#[should_panic(
+    expected = "SerializationError(Error(\"invalid type: sequence, expected string or map\", line: 0, column: 0))"
+)]
 fn rule_tx_matching_reference_to_calltraces_vector() {
     let comparison_wrong_reference = create_reference_value_comparison(
         "$.calltraces",
