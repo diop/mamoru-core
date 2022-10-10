@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
 use ethnum::U256;
-use mamoru_core::{
-    blockchain_data_types::{CallTrace, Event, Transaction},
-    rule::*,
-    value::Value,
-};
+
+mod common;
+use common::*;
 
 const BLOCK_INDEX: u128 = 15671840;
 const TX_INDEX: u128 = 12546;
@@ -34,7 +32,7 @@ fn create_default_event() -> Event {
         BLOCK_INDEX,
         TX_INDEX,
         EVENT_INDEX,
-        String::from(EVENT_ID).into_bytes(),
+        string_to_binary_vec(EVENT_ID),
         HashMap::new(),
     )
 }
@@ -47,30 +45,6 @@ fn create_default_calltrace() -> CallTrace {
         vec![create_default_event()],
         HashMap::new(),
     )
-}
-
-fn create_reference_value_comparison(
-    reference: &str,
-    value: Value,
-    operator: ComparisonOperator,
-) -> Comparison {
-    Comparison {
-        left: ComparisonValue::Reference(String::from(reference)),
-        right: ComparisonValue::Value(value),
-        operator,
-    }
-}
-
-fn create_value_reference_comparison(
-    reference: &str,
-    value: Value,
-    operator: ComparisonOperator,
-) -> Comparison {
-    Comparison {
-        left: ComparisonValue::Value(value),
-        right: ComparisonValue::Reference(String::from(reference)),
-        operator,
-    }
 }
 
 fn create_default_true_comparison() -> Comparison {
@@ -113,7 +87,7 @@ fn create_default_true_events_sequence_expression() -> Vec<Expression> {
         )),
         Expression::Comparison(create_reference_value_comparison(
             "$.event_id",
-            Value::Binary(String::from(EVENT_ID).into_bytes()),
+            Value::Binary(string_to_binary_vec(EVENT_ID)),
             ComparisonOperator::Equal,
         )),
     ]
@@ -157,30 +131,6 @@ fn create_default_false_calltraces_sequence_expression() -> Vec<Expression> {
             ComparisonOperator::Equal,
         )),
     ]
-}
-
-fn create_condition_with_comparison(
-    left: Comparison,
-    right: Comparison,
-    operator: ConditionOperator,
-) -> Condition {
-    Condition {
-        left: Box::new(Expression::Comparison(left)),
-        right: Box::new(Expression::Comparison(right)),
-        operator,
-    }
-}
-
-fn create_condition_with_condition(
-    left: Condition,
-    right: Comparison,
-    operator: ConditionOperator,
-) -> Condition {
-    Condition {
-        left: Box::new(Expression::Condition(left)),
-        right: Box::new(Expression::Comparison(right)),
-        operator,
-    }
 }
 
 #[test]
@@ -251,7 +201,7 @@ fn rule_tx_matching_reference_to_calltraces_vector() {
 fn rule_tx_matching_different_value_types() {
     let comparison_different_value_types = create_reference_value_comparison(
         "$.block_index",
-        Value::Binary(String::from(EVENT_ID).into_bytes()),
+        Value::Binary(string_to_binary_vec(EVENT_ID)),
         ComparisonOperator::LessThan,
     );
 
