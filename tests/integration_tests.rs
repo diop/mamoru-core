@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use ethnum::U256;
-
 mod common;
 use common::*;
 

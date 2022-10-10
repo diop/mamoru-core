@@ -1,8 +1,10 @@
 pub use mamoru_core::{
-    blockchain_data_types::{CallTrace, Event, Transaction},
+    blockchain_data_types::{Block, CallTrace, Event, Transaction},
     rule::*,
     value::Value,
 };
+pub use ethnum::U256;
+pub use std::collections::HashMap;
 
 pub fn create_reference_value_comparison(
     reference: &str,
