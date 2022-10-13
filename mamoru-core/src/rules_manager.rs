@@ -14,6 +14,7 @@ impl RulesManager for RulesList {
         self.last().unwrap()
     }
 
+    #[allow(clippy::manual_map)]
     fn remove_rule(&mut self, rule_id: usize) -> Option<Rule> {
         match self.get(rule_id) {
             Some(_) => Some(self.remove(rule_id)),
