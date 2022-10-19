@@ -239,8 +239,6 @@ fn ffi_value_array_new(value: repr_c::Vec<FfiValue>) -> repr_c::Box<FfiValue> {
 
 #[ffi_export]
 fn check_matches(transaction: &FfiTransaction) -> bool {
-    dbg!(&transaction.inner);
-
     let comparison = Comparison {
         left: ComparisonValue::Reference("$.events[0].block_index".into()),
         right: ComparisonValue::Value(Value::UInt128(U256::from(42u32))),
