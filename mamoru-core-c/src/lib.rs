@@ -56,7 +56,6 @@ macro_rules! ffi_free {
     };
 }
 
-
 #[derive_ReprC]
 #[ReprC::opaque]
 pub struct FfiU256 {
