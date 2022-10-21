@@ -24,38 +24,55 @@ typedef struct FfiI256 FfiI256_t;
 FfiI256_t * ffi_i256_new (
     char const * str_hex);
 
+typedef struct FfiList FfiList_t;
 
-#include <stddef.h>
-#include <stdint.h>
+FfiList_t * ffi_list_events_new (void);
+
+typedef struct FfiEvent FfiEvent_t;
+
+/** \brief
+ *  Drops `value` argument
+ */
+void ffi_list_events_append (
+    FfiList_t * list,
+    FfiEvent_t * value);
+
+FfiList_t * ffi_list_call_traces_new (void);
+
+typedef struct FfiCallTrace FfiCallTrace_t;
+
+/** \brief
+ *  Drops `value` argument
+ */
+void ffi_list_call_traces_append (
+    FfiList_t * list,
+    FfiCallTrace_t * value);
+
+FfiList_t * ffi_list_transactions_new (void);
 
 typedef struct FfiTransaction FfiTransaction_t;
 
 /** \brief
- *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
- * 
- *  # C layout (for some given type T)
- * 
- *  ```c
- *  typedef struct {
- *      // Cannot be NULL
- *      T * ptr;
- *      size_t len;
- *  } slice_T;
- *  ```
- * 
- *  # Nullable pointer?
- * 
- *  If you want to support the above typedef, but where the `ptr` field is
- *  allowed to be `NULL` (with the contents of `len` then being undefined)
- *  use the `Option< slice_ptr<_> >` type.
+ *  Drops `value` argument
  */
-typedef struct slice_ref_FfiTransaction {
+void ffi_list_transactions_append (
+    FfiList_t * list,
+    FfiTransaction_t * value);
 
-    FfiTransaction_t const * ptr;
+FfiList_t * ffi_list_values_new (void);
 
-    size_t len;
+typedef struct FfiValue FfiValue_t;
 
-} slice_ref_FfiTransaction_t;
+/** \brief
+ *  Drops `value` argument
+ */
+void ffi_list_values_append (
+    FfiList_t * list,
+    FfiValue_t * value);
+
+
+#include <stddef.h>
+#include <stdint.h>
 
 typedef struct FfiHashMap FfiHashMap_t;
 
@@ -64,73 +81,15 @@ typedef struct FfiBlock FfiBlock_t;
 FfiBlock_t * ffi_block_new (
     FfiU256_t const * block_index,
     uint64_t time,
-    slice_ref_FfiTransaction_t transactions,
+    FfiList_t const * transactions,
     FfiHashMap_t const * extra);
-
-typedef struct FfiEvent FfiEvent_t;
-
-/** \brief
- *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
- * 
- *  # C layout (for some given type T)
- * 
- *  ```c
- *  typedef struct {
- *      // Cannot be NULL
- *      T * ptr;
- *      size_t len;
- *  } slice_T;
- *  ```
- * 
- *  # Nullable pointer?
- * 
- *  If you want to support the above typedef, but where the `ptr` field is
- *  allowed to be `NULL` (with the contents of `len` then being undefined)
- *  use the `Option< slice_ptr<_> >` type.
- */
-typedef struct slice_ref_FfiEvent {
-
-    FfiEvent_t const * ptr;
-
-    size_t len;
-
-} slice_ref_FfiEvent_t;
-
-typedef struct FfiCallTrace FfiCallTrace_t;
-
-/** \brief
- *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
- * 
- *  # C layout (for some given type T)
- * 
- *  ```c
- *  typedef struct {
- *      // Cannot be NULL
- *      T * ptr;
- *      size_t len;
- *  } slice_T;
- *  ```
- * 
- *  # Nullable pointer?
- * 
- *  If you want to support the above typedef, but where the `ptr` field is
- *  allowed to be `NULL` (with the contents of `len` then being undefined)
- *  use the `Option< slice_ptr<_> >` type.
- */
-typedef struct slice_ref_FfiCallTrace {
-
-    FfiCallTrace_t const * ptr;
-
-    size_t len;
-
-} slice_ref_FfiCallTrace_t;
 
 FfiTransaction_t * ffi_transaction_new (
     FfiU256_t const * block_index,
     FfiU256_t const * tx_index,
     uint64_t time,
-    slice_ref_FfiEvent_t events,
-    slice_ref_FfiCallTrace_t call_traces,
+    FfiList_t const * events,
+    FfiList_t const * call_traces,
     FfiHashMap_t const * extra);
 
 /** \brief
@@ -171,12 +130,10 @@ FfiCallTrace_t * ffi_call_trace_new (
     FfiU256_t const * block_index,
     FfiU256_t const * tx_index,
     FfiU256_t const * call_trace_index,
-    slice_ref_FfiEvent_t events,
+    FfiList_t const * events,
     FfiHashMap_t const * extra);
 
 FfiHashMap_t * ffi_hash_map_new (void);
-
-typedef struct FfiValue FfiValue_t;
 
 /** \brief
  *  Drops `value` argument
@@ -264,49 +221,50 @@ FfiValue_t * ffi_value_u256_new (
 FfiValue_t * ffi_value_object_new (
     FfiHashMap_t * value);
 
-/** \brief
- *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
- */
-typedef struct Vec_uint8 {
-
-    uint8_t * ptr;
-
-    size_t len;
-
-    size_t cap;
-
-} Vec_uint8_t;
-
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_binary_new (
-    Vec_uint8_t value);
-
-/** \brief
- *  Same as [`Vec<T>`][`rust::Vec`], but with guaranteed `#[repr(C)]` layout
- */
-typedef struct Vec_FfiValue {
-
-    FfiValue_t * ptr;
-
-    size_t len;
-
-    size_t cap;
-
-} Vec_FfiValue_t;
+    slice_ref_uint8_t value);
 
 /** \brief
  *  Drops `value` argument
  */
 FfiValue_t * ffi_value_array_new (
-    Vec_FfiValue_t value);
+    FfiList_t * value);
 
 
 #include <stdbool.h>
 
 bool check_matches (
     FfiTransaction_t const * transaction);
+
+void ffi_free_u256 (
+    FfiU256_t * value);
+
+void ffi_free_i256 (
+    FfiI256_t * value);
+
+void ffi_free_hash_map (
+    FfiHashMap_t * value);
+
+void ffi_free_list_transactions (
+    FfiList_t * value);
+
+void ffi_free_list_events (
+    FfiList_t * value);
+
+void ffi_free_list_call_traces (
+    FfiList_t * value);
+
+void ffi_free_block (
+    FfiBlock_t * value);
+
+void ffi_free_transaction (
+    FfiTransaction_t * value);
+
+void ffi_free_event (
+    FfiEvent_t * value);
+
+void ffi_free_call_trace (
+    FfiCallTrace_t * value);
 
 
 #ifdef __cplusplus
