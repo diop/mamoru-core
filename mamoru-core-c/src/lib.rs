@@ -273,7 +273,7 @@ value_constructor!(FfiHashMap, Value::Object, object);
 
 #[ffi_export]
 fn ffi_value_binary_new(value: c_slice::Ref<u8>) -> repr_c::Box<FfiValue> {
-    let value = value.iter().map(|v| *v).collect();
+    let value = value.iter().copied().collect();
 
     repr_c::Box::new(FfiValue {
         inner: Value::Binary(value),
