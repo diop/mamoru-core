@@ -16,7 +16,7 @@ extern "C" {
 
 typedef struct FfiU256 FfiU256_t;
 
-FfiU256_t * ffi_u256_new (
+FfiU256_t * ffi_u256_from_hex (
     char const * str_hex);
 
 typedef struct FfiI256 FfiI256_t;
@@ -143,65 +143,29 @@ void ffi_hash_map_append (
     char const * key,
     FfiValue_t * value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_i8_new (
-    FfiI256_t * value);
+    int8_t value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_i16_new (
-    FfiI256_t * value);
+    int16_t value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_i32_new (
-    FfiI256_t * value);
+    int32_t value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_i64_new (
-    FfiI256_t * value);
+    int64_t value);
 
-/** \brief
- *  Drops `value` argument
- */
-FfiValue_t * ffi_value_i128_new (
-    FfiI256_t * value);
-
-/** \brief
- *  Drops `value` argument
- */
-FfiValue_t * ffi_value_i256_new (
-    FfiI256_t * value);
-
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_u8_new (
-    FfiU256_t * value);
+    uint8_t value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_u16_new (
-    FfiU256_t * value);
+    uint16_t value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_u32_new (
-    FfiU256_t * value);
+    uint32_t value);
 
-/** \brief
- *  Drops `value` argument
- */
 FfiValue_t * ffi_value_u64_new (
-    FfiU256_t * value);
+    uint64_t value);
 
 /** \brief
  *  Drops `value` argument
@@ -214,6 +178,18 @@ FfiValue_t * ffi_value_u128_new (
  */
 FfiValue_t * ffi_value_u256_new (
     FfiU256_t * value);
+
+/** \brief
+ *  Drops `value` argument
+ */
+FfiValue_t * ffi_value_i128_new (
+    FfiI256_t * value);
+
+/** \brief
+ *  Drops `value` argument
+ */
+FfiValue_t * ffi_value_i256_new (
+    FfiI256_t * value);
 
 /** \brief
  *  Drops `value` argument

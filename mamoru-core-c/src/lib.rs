@@ -24,6 +24,19 @@ macro_rules! value_constructor {
     };
 }
 
+macro_rules! value_constructor_number {
+    ($value_ty:tt, $variant:expr, $ty:tt) => {
+        paste! {
+            #[ffi_export]
+            fn [<ffi_value_ $ty _new>](value: $ty) -> repr_c::Box<FfiValue> {
+                repr_c::Box::new(FfiValue {
+                    inner: $variant($value_ty::from_words(0, value as _)),
+                })
+            }
+        }
+    };
+}
+
 macro_rules! list_methods {
     ($value_ty:expr, $ty:ident) => {
         paste! {
@@ -69,7 +82,7 @@ impl FfiU256 {
 }
 
 #[ffi_export]
-fn ffi_u256_new(str_hex: char_p::Ref<'_>) -> repr_c::Box<FfiU256> {
+fn ffi_u256_from_hex(str_hex: char_p::Ref<'_>) -> repr_c::Box<FfiU256> {
     let str_hex = str_hex.to_str();
 
     repr_c::Box::new(FfiU256 {
@@ -254,19 +267,21 @@ pub struct FfiValue {
     inner: Value,
 }
 
-value_constructor!(FfiI256, Value::Int8, i8);
-value_constructor!(FfiI256, Value::Int16, i16);
-value_constructor!(FfiI256, Value::Int32, i32);
-value_constructor!(FfiI256, Value::Int64, i64);
-value_constructor!(FfiI256, Value::Int128, i128);
-value_constructor!(FfiI256, Value::Int256, i256);
+value_constructor_number!(I256, Value::Int8, i8);
+value_constructor_number!(I256, Value::Int16, i16);
+value_constructor_number!(I256, Value::Int32, i32);
+value_constructor_number!(I256, Value::Int64, i64);
 
-value_constructor!(FfiU256, Value::UInt8, u8);
-value_constructor!(FfiU256, Value::UInt16, u16);
-value_constructor!(FfiU256, Value::UInt32, u32);
-value_constructor!(FfiU256, Value::UInt64, u64);
+value_constructor_number!(U256, Value::UInt8, u8);
+value_constructor_number!(U256, Value::UInt16, u16);
+value_constructor_number!(U256, Value::UInt32, u32);
+value_constructor_number!(U256, Value::UInt64, u64);
+
 value_constructor!(FfiU256, Value::UInt128, u128);
 value_constructor!(FfiU256, Value::UInt256, u256);
+
+value_constructor!(FfiI256, Value::Int128, i128);
+value_constructor!(FfiI256, Value::Int256, i256);
 
 value_constructor!(FfiHashMap, Value::Object, object);
 
@@ -292,7 +307,7 @@ fn ffi_value_array_new(value: repr_c::Box<FfiList<FfiValue>>) -> repr_c::Box<Ffi
 #[ffi_export]
 fn check_matches(transaction: &FfiTransaction) -> bool {
     let comparison = Comparison {
-        left: ComparisonValue::Reference("$.events[0].block_index".into()),
+        left: ComparisonValue::Reference("$.block_index".into()),
         right: ComparisonValue::Value(Value::UInt128(U256::from(42u32))),
         operator: ComparisonOperator::Equal,
     };
