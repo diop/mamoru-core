@@ -8,3 +8,5 @@ pub mod value;
 pub mod vendor {
     pub use ethnum;
 }
+
+mod validation_chain;

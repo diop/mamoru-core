@@ -8,10 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions-rs/toolchain@v1
         with:
           override: true
           components: rustfmt, clippy
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: Run linting
         run: |
           cargo fmt -- --check
@@ -20,9 +24,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions-rs/toolchain@v1
         with:
           override: true
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: Build
         run: cargo build --verbose
 
@@ -30,9 +38,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions-rs/toolchain@v1
         with:
           override: true
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: Run tests
         run: cargo test --verbose
 
@@ -61,9 +73,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - uses: actions-rs/toolchain@v1
         with:
           override: true
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --quiet
       - name: Generate code coverage
