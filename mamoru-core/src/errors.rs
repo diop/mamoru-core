@@ -13,3 +13,12 @@ pub enum RetrieveValueError {
     #[error(transparent)]
     JsonPathParsingError(#[from] jsonpath_lib::JsonPathError),
 }
+
+#[derive(Error, Debug)]
+pub enum ValidationClientError {
+    #[error("Failed to connect to the Validation Chain")]
+    Connect(#[from] tonic::transport::Error),
+
+    #[error("Failed to call the Validation Chain API")]
+    Request(#[from] tonic::Status),
+}

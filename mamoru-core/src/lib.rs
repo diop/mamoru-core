@@ -3,10 +3,9 @@ pub mod errors;
 pub mod rule;
 pub mod rules_engine;
 pub mod rules_manager;
+pub mod validation_chain;
 pub mod value;
 
 pub mod vendor {
     pub use ethnum;
 }
-
-mod validation_chain;

@@ -9,13 +9,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: recursive
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-          components: rustfmt, clippy
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+            submodules: true
+            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+
+      - uses: ./.github/actions/install-deps
       - name: Run linting
         run: |
           cargo fmt -- --check
@@ -25,12 +22,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: recursive
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+            submodules: true
+            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+
+      - uses: ./.github/actions/install-deps
       - name: Build
         run: cargo build --verbose
 
@@ -39,14 +34,26 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          submodules: recursive
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
+            submodules: true
+            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+
+      - uses: ./.github/actions/install-deps
       - name: Run tests
         run: cargo test --verbose
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+            submodules: true
+            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+
+      - uses: ./.github/actions/install-deps
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --quiet
+      - name: Generate code coverage
+        run: cargo llvm-cov
 
   slack-notify:
     runs-on: ubuntu-latest
@@ -68,19 +75,3 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  test-coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - uses: actions-rs/toolchain@v1
-        with:
-          override: true
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-      - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov --quiet
-      - name: Generate code coverage
-        run: cargo llvm-cov
