@@ -74,6 +74,9 @@ jobs:
         credentials:
           username: ${{ needs.prepare-validation-tests.outputs.docker_username }}
           password: ${{ needs.prepare-validation-tests.outputs.docker_password }}
+        ports:
+          - 4500:4500
+          - 9090:9090
     steps:
       - uses: actions/checkout@v3
         with:
@@ -82,9 +85,7 @@ jobs:
       - uses: ./.github/actions/install-deps
       - name: Run tests
         run: |
-          make validation-chain-test \
-          MAMORU_TEST_FAUCET_ENDPOINT=http://validation-chain:4500 \
-          MAMORU_ENDPOINT=http://validation-chain:9090
+          make validation-chain-test
 
   test-coverage:
     runs-on: ubuntu-latest
