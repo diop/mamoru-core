@@ -82,9 +82,9 @@ jobs:
       - uses: ./.github/actions/install-deps
       - name: Run tests
         run: |
+          make validation-chain-test \
           MAMORU_TEST_FAUCET_ENDPOINT=http://validation-chain:4500 \
-          MAMORU_ENDPOINT=http://validation-chain:9090 \
-          make validation-chain-test  
+          MAMORU_ENDPOINT=http://validation-chain:9090
 
   test-coverage:
     runs-on: ubuntu-latest
