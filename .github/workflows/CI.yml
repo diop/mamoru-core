@@ -9,8 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            submodules: true
-            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+          submodules: true
+          token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
 
       - uses: ./.github/actions/install-deps
       - name: Run linting
@@ -22,8 +22,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            submodules: true
-            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+          submodules: true
+          token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
 
       - uses: ./.github/actions/install-deps
       - name: Build
@@ -34,20 +34,65 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            submodules: true
-            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+          submodules: true
+          token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
 
       - uses: ./.github/actions/install-deps
       - name: Run tests
-        run: cargo test --verbose
+        run: make test
+
+  prepare-validation-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+
+      - id: submodule-version
+        run: |
+          SUBMODULE_COMMIT=$(git submodule status | cut -d " " -f2)
+          echo "commit=${SUBMODULE_COMMIT}" >> $GITHUB_OUTPUT
+      - id: ecr-login
+        uses: ./.github/actions/ecr-login
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+    outputs:
+      registry: ${{ steps.ecr-login.outputs.registry }}
+      docker_username: ${{ steps.ecr-login.outputs.docker_username }}
+      docker_password: ${{ steps.ecr-login.outputs.docker_password }}
+      submodule_commit: ${{ steps.submodule-version.outputs.commit }}
+
+  validation-chain-tests:
+    needs:
+      - prepare-validation-tests
+    runs-on: ubuntu-latest
+    services:
+      validation-chain:
+        image: ${{ needs.prepare-validation-tests.outputs.registry }}/mamoru-foundation/validation-chain-dev:${{ needs.prepare-validation-tests.outputs.submodule_commit }}
+        credentials:
+          username: ${{ needs.prepare-validation-tests.outputs.docker_username }}
+          password: ${{ needs.prepare-validation-tests.outputs.docker_password }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+      - uses: ./.github/actions/install-deps
+      - name: Run tests
+        run: |
+          MAMORU_TEST_FAUCET_ENDPOINT=http://validation-chain:4500 \
+          MAMORU_ENDPOINT=http://validation-chain:9090 \
+          make validation-chain-test  
 
   test-coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
-            submodules: true
-            token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
+          submodules: true
+          token: ${{ secrets.MAMORU_ACCESS_TOKEN }}
 
       - uses: ./.github/actions/install-deps
       - name: Install cargo-llvm-cov
@@ -62,6 +107,7 @@ jobs:
       - linting
       - build
       - tests
+      - validation-chain-tests
     steps:
       - uses: slackapi/slack-github-action@v1.22.0
         with:
@@ -71,6 +117,7 @@ jobs:
                 "linting": "${{ needs.linting.result == 'success' && '✅' || '❌' }}",
                 "build": "${{ needs.build.result == 'success' && '✅' || '❌' }}",
                 "tests": "${{ needs.tests.result == 'success' && '✅' || '❌' }}",
+                "validation-chain-tests": "${{ needs.validation-chain-tests.result == 'success' && '✅' || '❌' }}",
                 "run_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
         env:

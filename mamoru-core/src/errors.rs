@@ -1,3 +1,4 @@
+use cosmrs::{tendermint, ErrorReport};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -21,4 +22,67 @@ pub enum ValidationClientError {
 
     #[error("Failed to call the Validation Chain API")]
     Request(#[from] tonic::Status),
+
+    #[error("Failed to encode protobuf message")]
+    EncodeMessage(#[from] prost::EncodeError),
+
+    #[error("Failed to decode protobuf message")]
+    DecodeMessage(#[from] prost::DecodeError),
+
+    #[error("Failed to take transaction as bytes")]
+    TransactionToBytes(#[source] ErrorReport),
+
+    #[error("Failed to create Sign Doc")]
+    CreateSignDoc(#[source] ErrorReport),
+
+    #[error("Failed to sign a transaction")]
+    SignTransaction(#[source] ErrorReport),
+
+    #[error("Failed to parse token denominator")]
+    ParseTokenDenominator(#[source] ErrorReport),
+
+    #[error("Failed to parse chain id")]
+    ParseChainId(#[source] tendermint::Error),
+
+    #[error("Validation chain returned an error")]
+    CosmosSdkError(#[from] CosmosSdkError),
+}
+
+impl ValidationClientError {
+    pub(crate) fn is_incorrect_account_sequence(&self) -> bool {
+        matches!(
+            self,
+            Self::CosmosSdkError(CosmosSdkError::IncorrectAccountSequence)
+        )
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum CosmosSdkError {
+    #[error("The account sequence defined in the signer info doesn't match the account's actual sequence number")]
+    IncorrectAccountSequence,
+
+    #[error("Cannot parse a transaction")]
+    TxDecode,
+
+    #[error("Unknown error, code: {code}")]
+    Other { code: u32 },
+}
+
+type CosmosErrorCode = u32;
+
+impl TryFrom<CosmosErrorCode> for CosmosSdkError {
+    type Error = ();
+
+    fn try_from(value: CosmosErrorCode) -> Result<Self, Self::Error> {
+        match value {
+            // code 0 is success
+            0 => Err(()),
+            // See https://github.com/cosmos/cosmos-sdk/blob/main/types/errors/errors.go
+            // for more error codes
+            2 => Ok(CosmosSdkError::TxDecode),
+            32 => Ok(CosmosSdkError::IncorrectAccountSequence),
+            code => Ok(CosmosSdkError::Other { code }),
+        }
+    }
 }

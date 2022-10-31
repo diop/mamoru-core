@@ -3,7 +3,7 @@ pub mod validation_chain {
 }
 
 pub mod cosmos {
-    pub use super::includes::cosmos;
+    pub use cosmrs::proto::cosmos::*;
 }
 
 mod includes {
