@@ -1,0 +1,9 @@
+runs:
+  using: composite
+  steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        override: true
+        components: rustfmt, clippy
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v1
