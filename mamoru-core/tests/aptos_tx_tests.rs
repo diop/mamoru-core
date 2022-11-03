@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_clone)]
+
 mod common;
 use common::*;
 
@@ -278,7 +280,7 @@ fn rule_aptos_tx_matching() {
         operator: ConditionOperator::Or,
     });
 
-    let rule = Rule::new(rule_expression_true.clone());
+    let rule = test_active_rule(rule_expression_true.clone());
     let rule_verification_context_true = VerificationRuleContext::new(true, rule_expression_true);
 
     assert_eq!(
@@ -291,7 +293,7 @@ fn rule_aptos_tx_matching() {
         right: Box::new(create_true_condition_for_tx_fields()),
         operator: ConditionOperator::And,
     });
-    let rule = Rule::new(rule_expression_false.clone());
+    let rule = test_active_rule(rule_expression_false.clone());
     let rule_verification_context_false =
         VerificationRuleContext::new(false, rule_expression_false);
 

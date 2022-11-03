@@ -2,6 +2,21 @@ use cosmrs::{tendermint, ErrorReport};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+pub enum SnifferError {
+    #[error(transparent)]
+    ClientError(#[from] ValidationClientError),
+
+    #[error("Failed to parse Rule")]
+    RuleParseError(#[from] RuleParseError),
+}
+
+#[derive(Error, Debug)]
+pub enum RuleParseError {
+    #[error("Invalid DateTime format")]
+    DateTime(#[source] chrono::ParseError),
+}
+
+#[derive(Error, Debug)]
 pub enum RetrieveValueError {
     #[error("There is no such path as {0}")]
     NoPath(String),

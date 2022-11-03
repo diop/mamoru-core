@@ -1,10 +1,15 @@
 use cosmrs::crypto::{secp256k1, PublicKey};
 use cosmrs::{AccountId, Coin};
+use mamoru_core::validation_chain::{
+    AccountConfig, ConnectionConfig, MessageClient, MessageClientConfig, QueryClient,
+    QueryClientConfig,
+};
 use serde::Serialize;
 use std::error::Error;
 
 mod message_client;
 mod query_client;
+mod sniffer;
 
 /// Bech32 prefix for an account
 const ACCOUNT_PREFIX: &str = "cosmos";
@@ -25,9 +30,16 @@ impl TestAccount {
         }
     }
 
+    async fn with_faucet() -> Self {
+        let account = Self::new();
+        account.faucet().await.unwrap();
+
+        account
+    }
+
     async fn faucet(&self) -> Result<(), Box<dyn Error>> {
         let faucet_endpoint = std::env::var(FAUCET_ENDPOINT_ENV)
-            .expect(&format!("Missing {} env var", FAUCET_ENDPOINT_ENV));
+            .unwrap_or_else(|_| panic!("Missing {} env var", FAUCET_ENDPOINT_ENV));
 
         let request = FaucetRequest {
             address: self.address().to_string(),
@@ -62,4 +74,24 @@ fn coin(amount: u128) -> Coin {
         amount,
         denom: DENOM.parse().unwrap(),
     }
+}
+
+async fn message_client() -> MessageClient {
+    let TestAccount { key } = TestAccount::with_faucet().await;
+
+    MessageClient::connect(MessageClientConfig {
+        connection: ConnectionConfig::from_env(),
+        chain: Default::default(),
+        account: AccountConfig::new(key),
+    })
+    .await
+    .expect("Connection error")
+}
+
+async fn query_client() -> QueryClient {
+    QueryClient::connect(QueryClientConfig {
+        connection: ConnectionConfig::from_env(),
+    })
+    .await
+    .expect("Connection error")
 }

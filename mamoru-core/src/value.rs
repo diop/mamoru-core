@@ -174,9 +174,9 @@ mod value_tests {
             int64.clone(),
             uint64.clone(),
             binary.clone(),
-            Value::Array(vec![binary.clone(), ne_binary.clone()]),
+            Value::Array(vec![binary.clone(), ne_binary]),
         ]);
-        let ne_array = Value::Array(vec![int64.clone(), uint64.clone()]);
+        let ne_array = Value::Array(vec![int64.clone(), uint64]);
         let eq_array = array.clone();
 
         assert!(array.ne(&ne_array));
@@ -187,7 +187,7 @@ mod value_tests {
             ("second".to_string(), binary.clone()),
         ]));
         let ne_object = Value::Object(HashMap::from([
-            ("third".to_string(), int64.clone()),
+            ("third".to_string(), int64),
             ("second".to_string(), binary.clone()),
         ]));
         let eq_object = object.clone();
@@ -278,7 +278,7 @@ mod value_tests {
             int32.clone(),
             uint32.clone(),
             binary.clone(),
-            Value::Array(vec![binary.clone(), le_binary.clone()]),
+            Value::Array(vec![binary.clone(), le_binary]),
         ]);
         let le_array = Value::Array(vec![int32.clone(), uint32.clone()]);
 
