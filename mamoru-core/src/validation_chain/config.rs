@@ -7,7 +7,6 @@ use cosmrs::{AccountId, Denom};
 use serde::{Deserialize, Deserializer};
 use std::sync::Arc;
 
-
 /// The configuration required for creating MessageClient
 #[derive(Deserialize, Clone)]
 pub struct MessageClientConfig {
