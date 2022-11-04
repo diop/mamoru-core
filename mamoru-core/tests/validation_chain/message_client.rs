@@ -1,12 +1,14 @@
 use crate::validation_chain::message_client;
-use mamoru_core::validation_chain::{BlockId, ChainType, IncidentSource, TransactionId};
+use mamoru_core::validation_chain::{
+    BlockId, ChainType, IncidentReport, IncidentSource, TransactionId,
+};
 use test_log::test;
 
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
     let client = message_client().await;
-    let rule_id = "test_rule_id".to_string();
+    let rule_ids = vec!["test_rule_id0".to_string(), "test_rule_id1".to_string()];
 
     client
         .register_sniffer(ChainType::AptosMainnet)
@@ -14,14 +16,15 @@ async fn smoke() {
         .expect("Register sniffer error");
 
     client
-        .subscribe_rules(vec![rule_id.clone()])
+        .subscribe_rules(rule_ids.clone())
         .await
         .expect("Subscribe rules error");
 
-    client
-        .report_incident(
+    let incidents: Vec<_> = rule_ids
+        .into_iter()
+        .map(|rule_id| IncidentReport {
             rule_id,
-            IncidentSource::Transaction {
+            source: IncidentSource::Transaction {
                 transaction: TransactionId {
                     tx_id: "test_tx_id".to_string(),
                     hash: "test_tx_id".to_string(),
@@ -31,9 +34,13 @@ async fn smoke() {
                     hash: "test_block_id".to_string(),
                 }),
             },
-        )
+        })
+        .collect();
+
+    client
+        .report_incidents(incidents)
         .await
-        .expect("Report incident error");
+        .expect("Report incidents error");
 
     client
         .unregister_sniffer()

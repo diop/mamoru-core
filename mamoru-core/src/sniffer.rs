@@ -3,10 +3,9 @@ use crate::errors::SnifferError;
 use crate::from_env;
 use crate::rule::Rule;
 use crate::validation_chain::{
-    ChainType, IncidentSource, MessageClient, MessageClientConfig, QueryClient, QueryClientConfig,
-    RuleQueryResponseDto, TransactionId,
+    ChainType, IncidentReport, IncidentSource, MessageClient, MessageClientConfig, QueryClient,
+    QueryClientConfig, RuleQueryResponseDto, TransactionId,
 };
-use futures::future::join_all;
 use futures::TryStreamExt;
 use rayon::prelude::*;
 use serde::Deserialize;
@@ -130,35 +129,33 @@ impl Sniffer {
 
     /// Reports to Validation Chain if the provided transaction matches
     /// any rule from the internal storage.
-    #[tracing::instrument]
-    pub async fn observe_transaction(&self, tx: Transaction, tx_hash: String) {
+    #[tracing::instrument(skip(tx), fields(tx_id = ?tx.tx_index()))]
+    pub async fn observe_transaction(&self, tx: Transaction, tx_hash: String) -> SnifferResult<()> {
         let tx = Arc::new(tx);
-        let verify_results = self.check_incidents(tx.clone()).await;
+        let matched_rule_ids = self.check_incidents(tx.clone()).await;
 
-        let report_futures: Vec<_> = verify_results
+        let incidents: Vec<_> = matched_rule_ids
             .into_iter()
-            .map(|rule_id| async {
-                let result = self
-                    .message_client
-                    .report_incident(
-                        rule_id,
-                        IncidentSource::Transaction {
-                            block: None,
-                            transaction: TransactionId {
-                                tx_id: tx.tx_index_string(),
-                                hash: tx_hash.clone(),
-                            },
-                        },
-                    )
-                    .await;
-
-                result.map_err(|err| {
-                    error!(?err, "Failed to report an incident");
-                })
+            .map(|rule_id| IncidentReport {
+                rule_id,
+                source: IncidentSource::Transaction {
+                    block: None,
+                    transaction: TransactionId {
+                        tx_id: tx.tx_index_string(),
+                        hash: tx_hash.clone(),
+                    },
+                },
             })
             .collect();
 
-        join_all(report_futures).await;
+        debug!(len = incidents.len(), "Matched rules");
+
+        if !incidents.is_empty() {
+            debug!(?tx, "Reporting...");
+            self.message_client.report_incidents(incidents).await?;
+        }
+
+        Ok(())
     }
 
     /// Checks for matches for each of rules available.

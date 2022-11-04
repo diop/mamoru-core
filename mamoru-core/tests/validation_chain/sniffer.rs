@@ -29,7 +29,8 @@ async fn smoke() {
             Transaction::new(42, 43, time, vec![], vec![], HashMap::new()),
             "hash".into(),
         )
-        .await;
+        .await
+        .expect("Failed to observe transaction");
 
     sniffer.unregister().await.expect("Failed to unergister");
 }

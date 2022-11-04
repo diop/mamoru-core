@@ -124,8 +124,16 @@ impl Rule {
         })
     }
 
+    /// `inactivate_since` has more priority
     fn active(&self, time: &Value) -> bool {
-        time >= &self.activate_since && time < &self.inactivate_since
+        let inactive = time >= &self.inactivate_since;
+        let active = time >= &self.activate_since;
+
+        if inactive {
+            false
+        } else {
+            active
+        }
     }
 }
 
@@ -136,7 +144,7 @@ mod test {
 
     #[test]
     fn not_yet_active_rule_does_not_match() {
-        let rule = rule();
+        let rule = rule(ACTIVE_SINCE, INACTIVE_SINCE);
         let transaction = transaction(ACTIVE_SINCE - 1);
         let result = rule.verify(&transaction, None).unwrap();
 
@@ -145,7 +153,7 @@ mod test {
 
     #[test]
     fn already_inactive_rule_does_not_match() {
-        let rule = rule();
+        let rule = rule(ACTIVE_SINCE, INACTIVE_SINCE);
         let transaction = transaction(INACTIVE_SINCE);
         let result = rule.verify(&transaction, None).unwrap();
 
@@ -153,8 +161,19 @@ mod test {
     }
 
     #[test]
+    fn inactive_has_higher_priority() {
+        // `inactive_since = 0` makes the rule always inactive,
+        // regardless the `active_since` value
+        let rule = rule(1, 0);
+        let transaction = transaction(2);
+        let result = rule.verify(&transaction, None).unwrap();
+
+        assert!(!result.matched);
+    }
+
+    #[test]
     fn active_rule_does_match() {
-        let rule = rule();
+        let rule = rule(ACTIVE_SINCE, INACTIVE_SINCE);
         let transaction = transaction(ACTIVE_SINCE);
         let result = rule.verify(&transaction, None).unwrap();
 
@@ -168,11 +187,11 @@ mod test {
         Transaction::new(42, 43, time, vec![], vec![], HashMap::new())
     }
 
-    fn rule() -> Rule {
+    fn rule(active_since: u64, inactive_since: u64) -> Rule {
         Rule::new(
             "test".to_string(),
-            ACTIVE_SINCE,
-            INACTIVE_SINCE,
+            active_since,
+            inactive_since,
             Expression::Comparison(Comparison {
                 left: ComparisonValue::Reference("$.block_index".to_string()),
                 right: ComparisonValue::Value(Value::UInt128(U256::from(42u64))),

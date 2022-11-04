@@ -29,6 +29,11 @@ use tracing::error;
 const MAX_RETRIES: usize = 5;
 const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
 
+pub struct IncidentReport {
+    pub rule_id: String,
+    pub source: IncidentSource,
+}
+
 /// Safer wrapper over part of [`IncidentReportCommandRequestDto`]
 pub enum IncidentSource {
     Mempool,
@@ -104,71 +109,86 @@ impl MessageClient {
     }
 
     pub async fn register_sniffer(&self, chain: ChainType) -> ClientResult<()> {
-        self.sign_and_broadcast_tx(MsgRegisterSniffer {
+        self.sign_and_broadcast_txs(vec![MsgRegisterSniffer {
             creator: self.config.address().to_string(),
             sniffer: Some(SnifferRegisterCommandRequestDto {
                 chain: Some(Chain {
                     chain_type: chain.into(),
                 }),
             }),
-        })
+        }])
         .await?;
 
         Ok(())
     }
 
     pub async fn unregister_sniffer(&self) -> ClientResult<()> {
-        self.sign_and_broadcast_tx(MsgUnregisterSniffer {
+        self.sign_and_broadcast_txs(vec![MsgUnregisterSniffer {
             creator: self.config.address().to_string(),
             sniffer: Some(SnifferUnregisterCommandRequestDto {}),
-        })
+        }])
         .await?;
 
         Ok(())
     }
 
     pub async fn subscribe_rules(&self, rule_ids: Vec<String>) -> ClientResult<()> {
-        self.sign_and_broadcast_tx(MsgSubscribeRules {
+        self.sign_and_broadcast_txs(vec![MsgSubscribeRules {
             creator: self.config.address().to_string(),
             rules: Some(RulesSubscribeCommandRequestDto { rule_ids }),
-        })
+        }])
         .await?;
 
         Ok(())
     }
 
-    pub async fn report_incident(
+    pub async fn report_incidents(
         &self,
-        rule_id: String,
-        source: IncidentSource,
+        reports: impl IntoIterator<Item = IncidentReport>,
     ) -> ClientResult<()> {
-        let (source, block, tx) = match source {
-            IncidentSource::Mempool => (SourceType::Mempool, None, None),
-            IncidentSource::Transaction { block, transaction } => {
-                (SourceType::Block, block, Some(transaction))
-            }
-        };
+        let report_messages: Vec<_> = reports
+            .into_iter()
+            .map(|report| {
+                let (source, block, tx) = match report.source {
+                    IncidentSource::Mempool => (SourceType::Mempool, None, None),
+                    IncidentSource::Transaction { block, transaction } => {
+                        (SourceType::Block, block, Some(transaction))
+                    }
+                };
 
-        self.sign_and_broadcast_tx(MsgReportIncident {
-            creator: self.config.address().to_string(),
-            incident: Some(IncidentReportCommandRequestDto {
-                source: Some(Source {
-                    source_type: source.into(),
-                }),
-                rule_id,
-                block,
-                tx,
-            }),
-        })
-        .await?;
+                MsgReportIncident {
+                    creator: self.config.address().to_string(),
+                    incident: Some(IncidentReportCommandRequestDto {
+                        source: Some(Source {
+                            source_type: source.into(),
+                        }),
+                        rule_id: report.rule_id,
+                        block,
+                        tx,
+                    }),
+                }
+            })
+            .collect();
+
+        self.sign_and_broadcast_txs(report_messages).await?;
 
         Ok(())
     }
 
     /// Unlike queries, commands in Cosmos must be signed and published as transactions.
     /// This method handles transaction signing and ordering ( like setting `sequence_number`).
-    async fn sign_and_broadcast_tx<T: Message + TypeUrl>(&self, message: T) -> ClientResult<()> {
-        let tx_body = BodyBuilder::new().msg(message.to_any()?).finish();
+    async fn sign_and_broadcast_txs<T: Message + TypeUrl>(
+        &self,
+        messages: impl IntoIterator<Item = T>,
+    ) -> ClientResult<()> {
+        let mut builder = BodyBuilder::new();
+
+        for message in messages.into_iter() {
+            builder.msg(message.to_any()?);
+        }
+
+        let tx_body = builder.finish();
+
         let mut data = self.inner.lock().await;
 
         for _ in 0..MAX_RETRIES {
@@ -241,7 +261,7 @@ impl MessageClient {
 
         let tx_response = response.tx_response.expect("Always exists.");
 
-        match tx_response.code.try_into().ok() {
+        match tx_response.try_into().ok() {
             // If code is an error code, return proper error
             Some(error) => Err(ValidationClientError::CosmosSdkError(error)),
             // Ok otherwise
