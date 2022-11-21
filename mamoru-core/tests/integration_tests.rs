@@ -149,7 +149,7 @@ fn rule_tx_matching_happy_flow() {
         ConditionOperator::And,
     );
 
-    let rule = Rule::new(Expression::Condition(condition_complex_true.clone()));
+    let rule = test_active_rule(Expression::Condition(condition_complex_true.clone()));
     let rule_verification_context =
         VerificationRuleContext::new(true, Expression::Condition(condition_complex_true));
 
@@ -174,7 +174,7 @@ fn rule_tx_matching_non_existent_reference() {
         ConditionOperator::And,
     );
 
-    let rule = Rule::new(Expression::Condition(condition));
+    let rule = test_active_rule(Expression::Condition(condition));
 
     rule.verify(&create_default_transaction(), None).unwrap();
 }
@@ -190,7 +190,7 @@ fn rule_tx_matching_reference_to_calltraces_vector() {
         ComparisonOperator::LessThan,
     );
 
-    let rule = Rule::new(Expression::Comparison(comparison_wrong_reference));
+    let rule = test_active_rule(Expression::Comparison(comparison_wrong_reference));
 
     rule.verify(&create_default_transaction(), None).unwrap();
 }
@@ -209,7 +209,7 @@ fn rule_tx_matching_different_value_types() {
         ConditionOperator::And,
     );
 
-    let rule = Rule::new(Expression::Condition(condition.clone()));
+    let rule = test_active_rule(Expression::Condition(condition.clone()));
     let rule_verification_context =
         VerificationRuleContext::new(false, Expression::Condition(condition));
 
@@ -223,7 +223,7 @@ fn rule_tx_matching_different_value_types() {
 fn rule_tx_matching_events_sequence() {
     let expression = create_default_true_events_sequence_expression();
 
-    let rule = Rule::new(Expression::EventsSequence(expression.clone()));
+    let rule = test_active_rule(Expression::EventsSequence(expression.clone()));
     let rule_verification_context =
         VerificationRuleContext::new(true, Expression::EventsSequence(expression.clone()));
 
@@ -246,7 +246,7 @@ fn rule_tx_matching_events_sequence() {
 fn rule_tx_matching_true_calltrace_sequence_expression() {
     let expression = create_default_true_calltraces_sequence_expression();
 
-    let rule = Rule::new(Expression::CallTracesSequence(expression.clone()));
+    let rule = test_active_rule(Expression::CallTracesSequence(expression.clone()));
     let rule_verification_context =
         VerificationRuleContext::new(true, Expression::CallTracesSequence(expression.clone()));
 
@@ -269,7 +269,7 @@ fn rule_tx_matching_true_calltrace_sequence_expression() {
 fn rule_tx_matching_false_calltrace_sequence_expression() {
     let expression = create_default_false_calltraces_sequence_expression();
 
-    let rule = Rule::new(Expression::CallTracesSequence(expression.clone()));
+    let rule = test_active_rule(Expression::CallTracesSequence(expression.clone()));
     let rule_verification_context =
         VerificationRuleContext::new(false, Expression::CallTracesSequence(expression.clone()));
 

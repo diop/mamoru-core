@@ -1,10 +1,12 @@
-pub use crate::validation_chain::proto::validation_chain::{chain::ChainType, Block, Transaction};
+pub use crate::validation_chain::proto::validation_chain::{
+    chain::ChainType, Block as BlockId, Transaction as TransactionId,
+};
 
 use crate::errors::ValidationClientError;
 use crate::validation_chain::config::MessageClientConfig;
-use crate::validation_chain::proto::cosmos::auth::v1beta1::query_client::QueryClient;
+use crate::validation_chain::proto::cosmos::auth::v1beta1::query_client::QueryClient as CosmosQueryClient;
 use crate::validation_chain::proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountRequest};
-use crate::validation_chain::proto::cosmos::tx::v1beta1::service_client::ServiceClient;
+use crate::validation_chain::proto::cosmos::tx::v1beta1::service_client::ServiceClient as CosmosServiceClient;
 use crate::validation_chain::proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest};
 use crate::validation_chain::proto::validation_chain::source::SourceType;
 use crate::validation_chain::proto::validation_chain::{
@@ -19,31 +21,41 @@ use cosmrs::tx::{
 };
 use cosmrs::{AccountId, Coin};
 use prost::Message;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex;
+use tracing::error;
 
 const MAX_RETRIES: usize = 5;
 const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
+
+pub struct IncidentReport {
+    pub rule_id: String,
+    pub source: IncidentSource,
+}
 
 /// Safer wrapper over part of [`IncidentReportCommandRequestDto`]
 pub enum IncidentSource {
     Mempool,
     Transaction {
-        block: Block,
-        transaction: Transaction,
+        // Sui doesn't have blocks at all
+        block: Option<BlockId>,
+        transaction: TransactionId,
     },
 }
 
 /// Cache for account data, that is required to specify
 /// during transaction signing.
+#[derive(Clone, Copy)]
 struct AccountDataCache {
     number: AccountNumber,
     sequence: SequenceNumber,
 }
 
 impl AccountDataCache {
-    /// Loads [`Self`] from Cosmos gRPC API
+    /// Loads [`Self`] via Cosmos API
     async fn fetch(
-        query_client: &mut QueryClient<tonic::transport::Channel>,
+        query_client: &mut CosmosQueryClient<tonic::transport::Channel>,
         address: AccountId,
     ) -> ClientResult<Self> {
         let response = query_client
@@ -62,110 +74,140 @@ impl AccountDataCache {
     }
 }
 
-/// High-level wrapper for incident-reporting to Validation Chain.
-pub struct MessageClient {
-    service_client: ServiceClient<tonic::transport::Channel>,
-    query_client: QueryClient<tonic::transport::Channel>,
-    config: MessageClientConfig,
+/// Stateful internal data for the high-level client
+struct MessageClientInner {
+    service_client: CosmosServiceClient<tonic::transport::Channel>,
+    query_client: CosmosQueryClient<tonic::transport::Channel>,
     account_data: AccountDataCache,
+}
+
+/// High-level wrapper for incident-reporting to Validation Chain.
+#[derive(Clone)]
+pub struct MessageClient {
+    inner: Arc<Mutex<MessageClientInner>>,
+    config: MessageClientConfig,
 }
 
 impl MessageClient {
     /// Connect the the Validation Chain.
     /// Call [`MessageClientConfig::from_env`] to create `config` parameter from environment variables
     pub async fn connect(config: MessageClientConfig) -> ClientResult<Self> {
-        let service_client = ServiceClient::connect(config.connection.endpoint.clone()).await?;
-        let mut query_client = QueryClient::connect(config.connection.endpoint.clone()).await?;
+        let service_client =
+            CosmosServiceClient::connect(config.connection.endpoint.clone()).await?;
+        let mut query_client =
+            CosmosQueryClient::connect(config.connection.endpoint.clone()).await?;
         let account_data = AccountDataCache::fetch(&mut query_client, config.address()).await?;
 
         Ok(Self {
-            service_client,
-            query_client,
+            inner: Arc::new(Mutex::new(MessageClientInner {
+                service_client,
+                query_client,
+                account_data,
+            })),
             config,
-            account_data,
         })
     }
 
-    pub async fn register_sniffer(&mut self, chain: ChainType) -> ClientResult<()> {
-        self.sign_and_broadcast_tx(MsgRegisterSniffer {
+    pub async fn register_sniffer(&self, chain: ChainType) -> ClientResult<()> {
+        self.sign_and_broadcast_txs(vec![MsgRegisterSniffer {
             creator: self.config.address().to_string(),
             sniffer: Some(SnifferRegisterCommandRequestDto {
                 chain: Some(Chain {
                     chain_type: chain.into(),
                 }),
             }),
-        })
+        }])
         .await?;
 
         Ok(())
     }
 
-    pub async fn unregister_sniffer(&mut self) -> ClientResult<()> {
-        self.sign_and_broadcast_tx(MsgUnregisterSniffer {
+    pub async fn unregister_sniffer(&self) -> ClientResult<()> {
+        self.sign_and_broadcast_txs(vec![MsgUnregisterSniffer {
             creator: self.config.address().to_string(),
             sniffer: Some(SnifferUnregisterCommandRequestDto {}),
-        })
+        }])
         .await?;
 
         Ok(())
     }
 
-    pub async fn subscribe_rules(&mut self, rule_ids: Vec<String>) -> ClientResult<()> {
-        self.sign_and_broadcast_tx(MsgSubscribeRules {
+    pub async fn subscribe_rules(&self, rule_ids: Vec<String>) -> ClientResult<()> {
+        self.sign_and_broadcast_txs(vec![MsgSubscribeRules {
             creator: self.config.address().to_string(),
             rules: Some(RulesSubscribeCommandRequestDto { rule_ids }),
-        })
+        }])
         .await?;
 
         Ok(())
     }
 
-    pub async fn report_incident(
-        &mut self,
-        rule_id: String,
-        source: IncidentSource,
+    pub async fn report_incidents(
+        &self,
+        reports: impl IntoIterator<Item = IncidentReport>,
     ) -> ClientResult<()> {
-        let (source, block, tx) = match source {
-            IncidentSource::Mempool => (SourceType::Mempool, None, None),
-            IncidentSource::Transaction { block, transaction } => {
-                (SourceType::Block, Some(block), Some(transaction))
-            }
-        };
+        let report_messages: Vec<_> = reports
+            .into_iter()
+            .map(|report| {
+                let (source, block, tx) = match report.source {
+                    IncidentSource::Mempool => (SourceType::Mempool, None, None),
+                    IncidentSource::Transaction { block, transaction } => {
+                        (SourceType::Block, block, Some(transaction))
+                    }
+                };
 
-        self.sign_and_broadcast_tx(MsgReportIncident {
-            creator: self.config.address().to_string(),
-            incident: Some(IncidentReportCommandRequestDto {
-                source: Some(Source {
-                    source_type: source.into(),
-                }),
-                rule_id,
-                block,
-                tx,
-            }),
-        })
-        .await?;
+                MsgReportIncident {
+                    creator: self.config.address().to_string(),
+                    incident: Some(IncidentReportCommandRequestDto {
+                        source: Some(Source {
+                            source_type: source.into(),
+                        }),
+                        rule_id: report.rule_id,
+                        block,
+                        tx,
+                    }),
+                }
+            })
+            .collect();
+
+        self.sign_and_broadcast_txs(report_messages).await?;
 
         Ok(())
     }
 
     /// Unlike queries, commands in Cosmos must be signed and published as transactions.
     /// This method handles transaction signing and ordering ( like setting `sequence_number`).
-    async fn sign_and_broadcast_tx<T: Message + TypeUrl>(
-        &mut self,
-        message: T,
+    async fn sign_and_broadcast_txs<T: Message + TypeUrl>(
+        &self,
+        messages: impl IntoIterator<Item = T>,
     ) -> ClientResult<()> {
-        let tx_body = BodyBuilder::new().msg(message.to_any()?).finish();
+        let mut builder = BodyBuilder::new();
+
+        for message in messages.into_iter() {
+            builder.msg(message.to_any()?);
+        }
+
+        let tx_body = builder.finish();
+
+        let mut data = self.inner.lock().await;
 
         for _ in 0..MAX_RETRIES {
-            match self.sign_and_broadcast_tx_impl(tx_body.clone()).await {
+            match self
+                .sign_and_broadcast_tx_impl(
+                    tx_body.clone(),
+                    data.account_data,
+                    &mut data.service_client,
+                )
+                .await
+            {
                 Ok(_) => break,
                 Err(err) => {
                     if err.is_incorrect_account_sequence() {
-                        self.account_data =
-                            AccountDataCache::fetch(&mut self.query_client, self.config.address())
+                        data.account_data =
+                            AccountDataCache::fetch(&mut data.query_client, self.config.address())
                                 .await?;
                     } else {
-                        log::error!("Got unknown error code from validation chain: {}", err);
+                        error!("Got unknown error from validation chain: {}", err);
 
                         return Err(err);
                     }
@@ -177,13 +219,18 @@ impl MessageClient {
 
         // Assume our app is a main account user
         // Intended to reduce API call rate
-        self.account_data.sequence += 1;
+        data.account_data.sequence += 1;
 
         Ok(())
     }
 
-    async fn sign_and_broadcast_tx_impl(&mut self, tx_body: Body) -> ClientResult<()> {
-        let AccountDataCache { number, sequence } = self.account_data;
+    async fn sign_and_broadcast_tx_impl(
+        &self,
+        tx_body: Body,
+        account_data: AccountDataCache,
+        service_client: &mut CosmosServiceClient<tonic::transport::Channel>,
+    ) -> ClientResult<()> {
+        let AccountDataCache { number, sequence } = account_data;
         let auth_info = SignerInfo::single_direct(Some(self.config.public_key()), sequence)
             .auth_info(Fee::from_amount_and_gas(
                 Coin {
@@ -202,8 +249,7 @@ impl MessageClient {
             .sign(self.config.private_key())
             .map_err(ValidationClientError::SignTransaction)?;
 
-        let response = self
-            .service_client
+        let response = service_client
             .broadcast_tx(BroadcastTxRequest {
                 tx_bytes: tx_raw
                     .to_bytes()
@@ -215,9 +261,7 @@ impl MessageClient {
 
         let tx_response = response.tx_response.expect("Always exists.");
 
-        log::debug!("{:?}", tx_response);
-
-        match tx_response.code.try_into().ok() {
+        match tx_response.try_into().ok() {
             // If code is an error code, return proper error
             Some(error) => Err(ValidationClientError::CosmosSdkError(error)),
             // Ok otherwise

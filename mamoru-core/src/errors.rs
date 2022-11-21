@@ -1,5 +1,21 @@
+use cosmrs::proto::cosmos::base::abci::v1beta1::TxResponse;
 use cosmrs::{tendermint, ErrorReport};
 use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum SnifferError {
+    #[error(transparent)]
+    ClientError(#[from] ValidationClientError),
+
+    #[error("Failed to parse Rule")]
+    RuleParseError(#[from] RuleParseError),
+}
+
+#[derive(Error, Debug)]
+pub enum RuleParseError {
+    #[error("Invalid DateTime format")]
+    DateTime(#[source] chrono::ParseError),
+}
 
 #[derive(Error, Debug)]
 pub enum RetrieveValueError {
@@ -65,24 +81,31 @@ pub enum CosmosSdkError {
     #[error("Cannot parse a transaction")]
     TxDecode,
 
-    #[error("Unknown error, code: {code}")]
-    Other { code: u32 },
+    #[error("Invalid request: {raw_log}")]
+    InvalidRequest { raw_log: String },
+
+    #[error("Unknown error, code: {code}, raw_log: {raw_log}")]
+    Other { code: u32, raw_log: String },
 }
 
-type CosmosErrorCode = u32;
-
-impl TryFrom<CosmosErrorCode> for CosmosSdkError {
+impl TryFrom<TxResponse> for CosmosSdkError {
     type Error = ();
 
-    fn try_from(value: CosmosErrorCode) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: TxResponse) -> Result<Self, Self::Error> {
+        match value.code {
             // code 0 is success
             0 => Err(()),
             // See https://github.com/cosmos/cosmos-sdk/blob/main/types/errors/errors.go
             // for more error codes
             2 => Ok(CosmosSdkError::TxDecode),
+            18 => Ok(CosmosSdkError::InvalidRequest {
+                raw_log: value.raw_log,
+            }),
             32 => Ok(CosmosSdkError::IncorrectAccountSequence),
-            code => Ok(CosmosSdkError::Other { code }),
+            code => Ok(CosmosSdkError::Other {
+                code,
+                raw_log: value.raw_log,
+            }),
         }
     }
 }

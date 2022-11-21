@@ -12,3 +12,72 @@ mod includes {
 
     tonic::include_proto!("includes");
 }
+
+use crate::errors::RuleParseError;
+use crate::rule::{Comparison, ComparisonOperator, ComparisonValue, Expression, Rule};
+use crate::validation_chain::{ChainType, RuleQueryResponseDto};
+use crate::value::Value;
+use chrono::DateTime;
+use ethnum::U256;
+use serde::{Deserialize, Deserializer};
+use std::str::FromStr;
+
+impl TryFrom<RuleQueryResponseDto> for Rule {
+    type Error = RuleParseError;
+
+    fn try_from(value: RuleQueryResponseDto) -> Result<Self, Self::Error> {
+        let activate_since = DateTime::parse_from_rfc3339(&value.activate_since)
+            .map_err(RuleParseError::DateTime)?
+            .timestamp() as u64;
+        let inactivate_since = DateTime::parse_from_rfc3339(&value.inactivate_since)
+            .map_err(RuleParseError::DateTime)?
+            .timestamp() as u64;
+
+        Ok(Self::new(
+            value.rule_id,
+            activate_since,
+            inactivate_since,
+            // This has to be replaced with the actual Expression deserialization
+            Expression::Comparison(Comparison {
+                left: ComparisonValue::Reference("$.block_index".to_string()),
+                right: ComparisonValue::Value(Value::UInt128(U256::from(42u64))),
+                operator: ComparisonOperator::Equal,
+            }),
+        ))
+    }
+}
+
+impl<'de> Deserialize<'de> for ChainType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let chain_name = String::deserialize(deserializer)?;
+
+        ChainType::from_str(&chain_name).map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chain_type_from_str() {
+        let chain = ChainType::from_str("APTOS_MAINNET").unwrap();
+
+        assert!(matches!(chain, ChainType::AptosMainnet))
+    }
+
+    #[derive(Deserialize)]
+    struct TestObject {
+        chain: ChainType,
+    }
+
+    #[test]
+    fn chain_type_from_serde() {
+        let object: TestObject = serde_json::from_str("{\"chain\":\"APTOS_MAINNET\"}").unwrap();
+
+        assert!(matches!(object.chain, ChainType::AptosMainnet))
+    }
+}

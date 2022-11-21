@@ -111,6 +111,13 @@ impl Transaction {
         &self.tx_index
     }
 
+    pub fn tx_index_string(&self) -> String {
+        match self.tx_index {
+            Value::UInt128(value) => value.to_string(),
+            _ => "UNEXPECTED_INDEX_TYPE".to_string(),
+        }
+    }
+
     pub fn time(&self) -> &Value {
         &self.time
     }

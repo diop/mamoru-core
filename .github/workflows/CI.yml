@@ -16,7 +16,8 @@ jobs:
       - name: Run linting
         run: |
           cargo fmt -- --check
-          cargo clippy
+          cargo clippy --workspace --all-features --tests
+
   build:
     runs-on: ubuntu-latest
     steps:

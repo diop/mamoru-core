@@ -57,3 +57,7 @@ pub fn create_condition_with_condition(
 pub fn string_to_binary_vec(string: &str) -> Vec<u8> {
     String::from(string).into_bytes()
 }
+
+pub fn test_active_rule(expression: Expression) -> Rule {
+    Rule::new("testing".to_string(), 0, u64::MAX, expression)
+}

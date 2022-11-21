@@ -99,7 +99,6 @@ pub struct FfiI256 {
 #[ffi_export]
 fn ffi_i256_new(str_hex: char_p::Ref<'_>) -> repr_c::Box<FfiI256> {
     let str_hex = str_hex.to_str();
-
     repr_c::Box::new(FfiI256 {
         inner: I256::from_str_hex(str_hex).expect("Wrong hex value for i256."),
     })
@@ -312,7 +311,12 @@ fn check_matches(transaction: &FfiTransaction) -> bool {
         operator: ComparisonOperator::Equal,
     };
 
-    let rule = Rule::new(Expression::Comparison(comparison));
+    let rule = Rule::new(
+        "test".to_string(),
+        0,
+        u64::MAX,
+        Expression::Comparison(comparison),
+    );
 
     rule.verify(&transaction.inner, None).unwrap().matched()
 }

@@ -1,11 +1,14 @@
 use crate::errors::ValidationClientError;
+use crate::from_env;
 use crate::validation_chain::ClientResult;
 use cosmrs::crypto::{secp256k1, PublicKey};
 use cosmrs::tendermint::chain;
 use cosmrs::{AccountId, Denom};
 use serde::{Deserialize, Deserializer};
+use std::sync::Arc;
 
-#[derive(Deserialize)]
+/// The configuration required for creating MessageClient
+#[derive(Deserialize, Clone)]
 pub struct MessageClientConfig {
     #[serde(flatten)]
     pub connection: ConnectionConfig,
@@ -19,9 +22,7 @@ pub struct MessageClientConfig {
 
 impl MessageClientConfig {
     pub fn from_env() -> Self {
-        envy::prefixed("MAMORU_")
-            .from_env()
-            .expect("Missing environment variables")
+        from_env()
     }
 
     pub fn public_key(&self) -> PublicKey {
@@ -67,7 +68,8 @@ impl MessageClientConfig {
     }
 }
 
-#[derive(Deserialize)]
+/// The configuration required for creating QueryClient
+#[derive(Deserialize, Clone, Debug)]
 pub struct QueryClientConfig {
     #[serde(flatten)]
     pub connection: ConnectionConfig,
@@ -75,26 +77,24 @@ pub struct QueryClientConfig {
 
 impl QueryClientConfig {
     pub fn from_env() -> Self {
-        envy::prefixed("MAMORU_")
-            .from_env()
-            .expect("Missing environment variables")
+        from_env()
     }
 }
 
-#[derive(Deserialize)]
+/// Connection parameters for the Validation Chain API
+#[derive(Deserialize, Clone, Debug)]
 pub struct ConnectionConfig {
     pub endpoint: String,
 }
 
 impl ConnectionConfig {
     pub fn from_env() -> Self {
-        envy::prefixed("MAMORU_")
-            .from_env()
-            .expect("Missing environment variables")
+        from_env()
     }
 }
 
-#[derive(Deserialize)]
+/// Cosmos chain-specific configuration
+#[derive(Deserialize, Clone, Debug)]
 pub struct ChainConfig {
     pub chain_id: String,
     pub account_id_prefix: String,
@@ -115,13 +115,21 @@ impl Default for ChainConfig {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct AccountConfig {
     #[serde(deserialize_with = "key_from_base64_bytes")]
-    pub private_key: secp256k1::SigningKey,
+    pub private_key: Arc<secp256k1::SigningKey>,
 }
 
-fn key_from_base64_bytes<'de, D>(deserializer: D) -> Result<secp256k1::SigningKey, D::Error>
+impl AccountConfig {
+    pub fn new(private_key: secp256k1::SigningKey) -> Self {
+        Self {
+            private_key: Arc::new(private_key),
+        }
+    }
+}
+
+fn key_from_base64_bytes<'de, D>(deserializer: D) -> Result<Arc<secp256k1::SigningKey>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -129,5 +137,5 @@ where
     let bytes = base64::decode(base64_string).expect("Can not parse private key base64");
     let key = secp256k1::SigningKey::from_bytes(&bytes).expect("Can not parse private key bytes");
 
-    Ok(key)
+    Ok(Arc::new(key))
 }
