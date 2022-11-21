@@ -114,9 +114,9 @@ impl Rule {
         transaction: &Transaction,
         _block: Option<Block>,
     ) -> Result<VerificationRuleContext, RetrieveValueError> {
-        let matched = self.active(transaction.time());
+        let is_active = self.is_active(transaction.time());
         let matched =
-            matched && rules_engine::check_expression(transaction, self.rule_expression())?;
+            is_active && rules_engine::check_expression(transaction, self.rule_expression())?;
 
         Ok(VerificationRuleContext {
             matched,
@@ -125,7 +125,7 @@ impl Rule {
     }
 
     /// `inactivate_since` has more priority
-    fn active(&self, time: &Value) -> bool {
+    fn is_active(&self, time: &Value) -> bool {
         let inactive = time >= &self.inactivate_since;
         let active = time >= &self.activate_since;
 
