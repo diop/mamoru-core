@@ -130,6 +130,18 @@ impl ChainConfig {
     }
 }
 
+impl Default for ChainConfig {
+    fn default() -> Self {
+        Self {
+            chain_id: Self::default_chain_id(),
+            account_id_prefix: Self::default_account_id_prefix(),
+            token_denominator: Self::default_token_denominator(),
+            tx_gas_limit: Self::default_tx_gas_limit(),
+            tx_fee_amount: Self::default_tx_fee_amount(),
+        }
+    }
+}
+
 #[derive(Deserialize, Clone)]
 pub struct AccountConfig {
     #[serde(deserialize_with = "key_from_base64_bytes")]
