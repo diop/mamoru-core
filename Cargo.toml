@@ -2,5 +2,4 @@
 members = [
     "mamoru-core",
     "mamoru-core-c",
-    "cosmos-account-generator",
 ]

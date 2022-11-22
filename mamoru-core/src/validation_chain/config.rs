@@ -13,7 +13,7 @@ pub struct MessageClientConfig {
     #[serde(flatten)]
     pub connection: ConnectionConfig,
 
-    #[serde(default)]
+    #[serde(flatten)]
     pub chain: ChainConfig,
 
     #[serde(flatten)]
@@ -96,22 +96,37 @@ impl ConnectionConfig {
 /// Cosmos chain-specific configuration
 #[derive(Deserialize, Clone, Debug)]
 pub struct ChainConfig {
+    #[serde(default = "ChainConfig::default_chain_id")]
     pub chain_id: String,
+    #[serde(default = "ChainConfig::default_account_id_prefix")]
     pub account_id_prefix: String,
+    #[serde(default = "ChainConfig::default_token_denominator")]
     pub token_denominator: String,
+    #[serde(default = "ChainConfig::default_tx_gas_limit")]
     pub tx_gas_limit: u64,
+    #[serde(default = "ChainConfig::default_tx_fee_amount")]
     pub tx_fee_amount: u128,
 }
 
-impl Default for ChainConfig {
-    fn default() -> Self {
-        ChainConfig {
-            chain_id: "validationchain".to_string(),
-            account_id_prefix: "cosmos".to_string(),
-            token_denominator: "token".to_string(),
-            tx_gas_limit: 100_000,
-            tx_fee_amount: 0,
-        }
+impl ChainConfig {
+    fn default_chain_id() -> String {
+        "validationchain".to_string()
+    }
+
+    fn default_account_id_prefix() -> String {
+        "cosmos".to_string()
+    }
+
+    fn default_token_denominator() -> String {
+        "token".to_string()
+    }
+
+    fn default_tx_gas_limit() -> u64 {
+        100_000
+    }
+
+    fn default_tx_fee_amount() -> u128 {
+        0
     }
 }
 
