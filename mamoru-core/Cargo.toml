@@ -15,7 +15,7 @@ async-stream = "0.3"
 base64 = "0.13"
 # Use custom `cosmrs` due to breaking dependency with `sui` integration.
 # See https://github.com/Mamoru-Foundation/cosmos-rust/commit/61b33b3ec70200c823a8d1ab2f38868dc67469fd
-cosmrs = { git = "https://github.com/Mamoru-Foundation/cosmos-rust.git", rev = "44345956", features = ["grpc", "grpc-tls"] }
+cosmrs = { git = "https://github.com/Mamoru-Foundation/cosmos-rust.git", rev = "8c971b29", features = ["grpc"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 envy = "0.4"
 ethnum = { version = "1", features = ["serde"] }
@@ -30,7 +30,7 @@ strum_macros = "0.24"
 thiserror = "1.0"
 tokio = { version = "1.21", features = ["macros", "rt-multi-thread"] }
 tokio-rayon = "2.1"
-tonic = { version = "0.8", features = ["tls"] }
+tonic = { version = "0.8", features = ["tls-roots"] }
 tracing = "0.1"
 
 [build-dependencies]
