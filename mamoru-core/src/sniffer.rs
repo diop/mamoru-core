@@ -129,7 +129,7 @@ impl Sniffer {
 
     /// Reports to Validation Chain if the provided transaction matches
     /// any rule from the internal storage.
-    #[tracing::instrument(skip(tx), fields(tx_id = ?tx.tx_index()))]
+    #[tracing::instrument(skip(tx), fields(tx_id = ?tx.tx_index()), level = "debug")]
     pub async fn observe_transaction(&self, tx: Transaction, tx_hash: String) -> SnifferResult<()> {
         let tx = Arc::new(tx);
         let matched_rule_ids = self.check_incidents(tx.clone()).await;
