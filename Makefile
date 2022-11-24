@@ -9,6 +9,9 @@ RUST_LOG="warn,mamoru_core=debug"
 init:
 	git submodule update --init
 
+submodule-update:
+	git submodule update --remote --merge
+
 pull-proto-dependencies:
 	buf export buf.build/cosmos/cosmos-sdk:$(COSMOS_SDK_COMMIT) --output ./mamoru-core/proto/
 
