@@ -1,7 +1,7 @@
 use crate::validation_chain::TestAccount;
 use mamoru_core::blockchain_data_types::Transaction;
 use mamoru_core::validation_chain::{
-    AccountConfig, ConnectionConfig, MessageClientConfig, QueryClientConfig,
+    AccountConfig, ChainType, ConnectionConfig, MessageClientConfig, QueryClientConfig,
 };
 use mamoru_core::{Sniffer, SnifferConfig};
 use std::collections::HashMap;
@@ -47,7 +47,7 @@ async fn sniffer() -> Sniffer {
         query_config: QueryClientConfig {
             connection: ConnectionConfig::from_env(),
         },
-        chain_type: Default::default(),
+        chain_type: ChainType::SuiDevnet,
     })
     .await
     .expect("Failed to create Sniffer")

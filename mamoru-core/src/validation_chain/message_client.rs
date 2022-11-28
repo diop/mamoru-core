@@ -109,9 +109,12 @@ impl MessageClient {
     }
 
     pub async fn register_sniffer(&self, chain: ChainType) -> ClientResult<()> {
+        let sniffer = self.config.address().to_string();
+
         self.sign_and_broadcast_txs(vec![MsgRegisterSniffer {
-            creator: self.config.address().to_string(),
+            creator: sniffer.clone(),
             sniffer: Some(SnifferRegisterCommandRequestDto {
+                sniffer,
                 chain: Some(Chain {
                     chain_type: chain.into(),
                 }),
@@ -123,9 +126,11 @@ impl MessageClient {
     }
 
     pub async fn unregister_sniffer(&self) -> ClientResult<()> {
+        let sniffer = self.config.address().to_string();
+
         self.sign_and_broadcast_txs(vec![MsgUnregisterSniffer {
-            creator: self.config.address().to_string(),
-            sniffer: Some(SnifferUnregisterCommandRequestDto {}),
+            creator: sniffer.clone(),
+            sniffer: Some(SnifferUnregisterCommandRequestDto { sniffer }),
         }])
         .await?;
 
@@ -133,9 +138,11 @@ impl MessageClient {
     }
 
     pub async fn subscribe_rules(&self, rule_ids: Vec<String>) -> ClientResult<()> {
+        let sniffer = self.config.address().to_string();
+
         self.sign_and_broadcast_txs(vec![MsgSubscribeRules {
-            creator: self.config.address().to_string(),
-            rules: Some(RulesSubscribeCommandRequestDto { rule_ids }),
+            creator: sniffer.clone(),
+            rules: Some(RulesSubscribeCommandRequestDto { rule_ids, sniffer }),
         }])
         .await?;
 
@@ -146,6 +153,8 @@ impl MessageClient {
         &self,
         reports: impl IntoIterator<Item = IncidentReport>,
     ) -> ClientResult<()> {
+        let sniffer = self.config.address().to_string();
+
         let report_messages: Vec<_> = reports
             .into_iter()
             .map(|report| {
@@ -157,8 +166,9 @@ impl MessageClient {
                 };
 
                 MsgReportIncident {
-                    creator: self.config.address().to_string(),
+                    creator: sniffer.clone(),
                     incident: Some(IncidentReportCommandRequestDto {
+                        sniffer: sniffer.clone(),
                         source: Some(Source {
                             source_type: source.into(),
                         }),
