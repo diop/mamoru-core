@@ -1,11 +1,15 @@
 [workspace]
 members = [
+    "blockchain-data-derive",
     "mamoru-core",
-    "mamoru-core-c",
+    # temporary disabled as it doesn't make sence after migration to apache arrow
+    # "mamoru-core-c",
+    "mamoru-sui-types",
     "cosmos-account-generator",
 ]
 
 [workspace.dependencies]
 # Use custom `cosmrs` due to breaking dependency with `sui` integration.
 # See https://github.com/Mamoru-Foundation/cosmos-rust/commit/61b33b3ec70200c823a8d1ab2f38868dc67469fd
-cosmrs = { git = "https://github.com/Mamoru-Foundation/cosmos-rust.git", rev = "8c971b29"}
+cosmrs = { git = "https://github.com/Mamoru-Foundation/cosmos-rust.git", rev = "8c971b29" }
+datafusion = "15.0.0"

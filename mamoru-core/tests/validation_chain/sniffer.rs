@@ -1,21 +1,14 @@
+use crate::rule::data_ctx;
 use crate::validation_chain::TestAccount;
-use mamoru_core::blockchain_data_types::Transaction;
 use mamoru_core::validation_chain::{
     AccountConfig, ChainType, ConnectionConfig, MessageClientConfig, QueryClientConfig,
 };
 use mamoru_core::{Sniffer, SnifferConfig};
-use std::collections::HashMap;
-use std::time::UNIX_EPOCH;
 use test_log::test;
 
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
-    let time = std::time::SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
     let mut sniffer = sniffer().await;
 
     sniffer.register().await.expect("Failed to register");
@@ -25,10 +18,7 @@ async fn smoke() {
         .expect("Failed to update rules");
 
     sniffer
-        .observe_transaction(
-            Transaction::new(42, 43, time, vec![], vec![], HashMap::new()),
-            "hash".into(),
-        )
+        .observe_data(data_ctx("HASH"))
         .await
         .expect("Failed to observe transaction");
 
