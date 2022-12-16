@@ -1,3 +1,3 @@
-[submodule "mamoru-core/proto/validation-chain"]
-	path = validation-chain-client/proto/validation-chain
+[submodule "mamoru-sniffer/proto/validation-chain"]
+	path = mamoru-sniffer/proto/validation-chain
 	url = git@github.com:Mamoru-Foundation/validation-chain.git
