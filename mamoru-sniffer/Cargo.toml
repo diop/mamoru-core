@@ -1,0 +1,40 @@
+[package]
+name = "mamoru-sniffer"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# Disabling because:
+# - we don't need it yet
+# - doctests fail on generated code
+doctest = false
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-stream = "0.3"
+base64 = "0.20.0"
+chrono = { workspace = true }
+cosmrs = { workspace = true, features = ["grpc"] }
+envy = "0.4"
+futures = "0.3"
+mamoru-core = { path = "../mamoru-core" }
+prost = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+strum = "0.24"
+strum_macros = "0.24"
+thiserror = "1.0"
+tokio = { workspace = true }
+tonic = { version = "0.8", features = ["tls-roots"] }
+tracing = "0.1"
+
+[build-dependencies]
+tonic-build = "0.8"
+
+[dev-dependencies]
+env_logger = "0.10.0"
+mamoru-core = { path = "../mamoru-core", features = ["test_data"] }
+reqwest = { version = "0.11", features = ["json"] }
+serde_json = "1.0"
+test-log = { version = "0.2.11", features = ["trace"] }
+tokio = { workspace = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }

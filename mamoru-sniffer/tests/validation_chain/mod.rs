@@ -1,6 +1,6 @@
 use cosmrs::crypto::{secp256k1, PublicKey};
 use cosmrs::{AccountId, Coin};
-use mamoru_core::validation_chain::{
+use mamoru_sniffer::validation_chain::{
     AccountConfig, ConnectionConfig, MessageClient, MessageClientConfig, QueryClient,
     QueryClientConfig,
 };

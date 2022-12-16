@@ -1,9 +1,9 @@
-use crate::rule::data_ctx;
 use crate::validation_chain::TestAccount;
-use mamoru_core::validation_chain::{
+use mamoru_core::test_blockchain_data::data_ctx;
+use mamoru_sniffer::validation_chain::{
     AccountConfig, ChainType, ConnectionConfig, MessageClientConfig, QueryClientConfig,
 };
-use mamoru_core::{Sniffer, SnifferConfig};
+use mamoru_sniffer::{Sniffer, SnifferConfig};
 use test_log::test;
 
 #[test(tokio::test)]

@@ -217,7 +217,7 @@ impl MessageClient {
                             AccountDataCache::fetch(&mut data.query_client, self.config.address())
                                 .await?;
                     } else {
-                        error!("Got unknown error from validation chain: {}", err);
+                        error!("Got unknown error from validation chain: {:?}", err);
 
                         return Err(err);
                     }

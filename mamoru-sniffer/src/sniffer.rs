@@ -1,12 +1,11 @@
 use crate::errors::SnifferError;
 use crate::from_env;
-use crate::rule::Rule;
 use crate::validation_chain::{
     ChainType, IncidentReport, IncidentSource, MessageClient, MessageClientConfig, QueryClient,
     QueryClientConfig, RuleQueryResponseDto, TransactionId,
 };
-use crate::BlockchainDataCtx;
 use futures::TryStreamExt;
+use mamoru_core::{BlockchainDataCtx, Rule};
 use serde::Deserialize;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;

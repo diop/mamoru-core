@@ -14,9 +14,9 @@ mod includes {
 }
 
 use crate::errors::RuleParseError;
-use crate::rule::Rule;
 use crate::validation_chain::{ChainType, RuleQueryResponseDto};
 use chrono::DateTime;
+use mamoru_core::Rule;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 

@@ -1,10 +1,15 @@
 [package]
-name = "mamoru-sui-types"
+name = "query-validator"
 version = "0.1.0"
 edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-blockchain-data-macro = { path = "../blockchain-data-macro" }
+chrono = { workspace = true }
 datafusion = { workspace = true }
 mamoru-core = { path = "../mamoru-core" }
+mamoru-sui-types = { path = "../mamoru-sui-types" }
+thiserror = "1.0"
+
+[dev-dependencies]
+tokio = { workspace = true }

@@ -5,7 +5,7 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Generate random Mnemonic using the default language (English)
-    let mnemonic = Mnemonic::random(&mut OsRng, Default::default());
+    let mnemonic = Mnemonic::random(OsRng, Default::default());
     let seed = mnemonic.to_seed("");
 
     // Derive a child `XPrv` using the provided BIP32 derivation path

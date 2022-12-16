@@ -1,6 +1,6 @@
 use crate::validation_chain::query_client;
 use futures::TryStreamExt;
-use mamoru_core::validation_chain::RuleQueryResponseDto;
+use mamoru_sniffer::validation_chain::RuleQueryResponseDto;
 use test_log::test;
 
 #[test(tokio::test)]

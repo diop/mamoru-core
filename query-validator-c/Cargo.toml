@@ -1,0 +1,16 @@
+[package]
+name = "query-validator-c"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib"]
+
+[features]
+headers = ["safer-ffi/headers"]
+
+[dependencies]
+lazy_static = "1.4.0"
+query-validator = { path = "../query-validator" }
+safer-ffi = { version = "0.0.10", features = ["log", "proc_macros"] }
+tokio = { workspace = true, features = ["rt"] }

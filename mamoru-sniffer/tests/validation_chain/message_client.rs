@@ -1,5 +1,5 @@
 use crate::validation_chain::message_client;
-use mamoru_core::validation_chain::{
+use mamoru_sniffer::validation_chain::{
     BlockId, ChainType, IncidentReport, IncidentSource, TransactionId,
 };
 use test_log::test;

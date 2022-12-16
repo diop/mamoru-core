@@ -13,10 +13,10 @@ submodule-update:
 	git submodule update --remote --merge
 
 pull-proto-dependencies:
-	buf export buf.build/cosmos/cosmos-sdk:$(COSMOS_SDK_COMMIT) --output ./mamoru-core/proto/
+	buf export buf.build/cosmos/cosmos-sdk:$(COSMOS_SDK_COMMIT) --output ./validation-chain-client/proto/
 
 test:
-	cargo test
+	cargo test --all-features --workspace
 
 validation-chain-test:
 	RUST_LOG=$(RUST_LOG) \

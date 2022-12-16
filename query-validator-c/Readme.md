@@ -1,4 +1,4 @@
-## C ABI compatible layer for `mamoru-core`
+## C ABI compatible layer for `rule-expression-validator`
 
 The layer enables developers to use `mamoru-core` with 
 any programming language that can call C libraries.
@@ -18,12 +18,6 @@ It is recommended to setup binary size optimization:
 opt-level = 3
 strip = "debuginfo"
 lto = true
-```
-
-Also, use static linking to prevent `glibc` issues:
-```toml
-[lib]
-crate-type = ["staticlib"]
 ```
 
 ---
