@@ -14,11 +14,9 @@ mod includes {
 }
 
 use crate::errors::RuleParseError;
-use crate::rule::{Comparison, ComparisonOperator, ComparisonValue, Expression, Rule};
+use crate::rule::Rule;
 use crate::validation_chain::{ChainType, RuleQueryResponseDto};
-use crate::value::Value;
 use chrono::DateTime;
-use ethnum::U256;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
@@ -28,22 +26,19 @@ impl TryFrom<RuleQueryResponseDto> for Rule {
     fn try_from(value: RuleQueryResponseDto) -> Result<Self, Self::Error> {
         let activate_since = DateTime::parse_from_rfc3339(&value.activate_since)
             .map_err(RuleParseError::DateTime)?
-            .timestamp() as u64;
+            .timestamp();
         let inactivate_since = DateTime::parse_from_rfc3339(&value.inactivate_since)
             .map_err(RuleParseError::DateTime)?
-            .timestamp() as u64;
+            .timestamp();
 
-        Ok(Self::new(
+        let rule = Self::new(
             value.rule_id,
             activate_since,
             inactivate_since,
-            // This has to be replaced with the actual Expression deserialization
-            Expression::Comparison(Comparison {
-                left: ComparisonValue::Reference("$.block_index".to_string()),
-                right: ComparisonValue::Value(Value::UInt128(U256::from(42u64))),
-                operator: ComparisonOperator::Equal,
-            }),
-        ))
+            &value.content,
+        )?;
+
+        Ok(rule)
     }
 }
 

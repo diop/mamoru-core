@@ -1,17 +1,14 @@
+mod blockchain_data;
+mod errors;
+mod rule;
 mod sniffer;
 
-pub mod blockchain_data_types;
-pub mod errors;
-pub mod rule;
-pub mod rules_engine;
 pub mod validation_chain;
-pub mod value;
 
-pub mod vendor {
-    pub use ethnum;
-}
-
-pub use sniffer::*;
+pub use blockchain_data::{BlockchainData, BlockchainDataCtx, BlockchainDataCtxBuilder};
+pub use errors::{DataError, RuleParseError, SnifferError, ValidationClientError};
+pub use rule::Rule;
+pub use sniffer::{Sniffer, SnifferConfig};
 
 fn from_env<T>() -> T
 where

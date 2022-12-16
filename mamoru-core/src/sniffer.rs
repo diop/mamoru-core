@@ -1,4 +1,3 @@
-use crate::blockchain_data_types::Transaction;
 use crate::errors::SnifferError;
 use crate::from_env;
 use crate::rule::Rule;
@@ -6,12 +5,12 @@ use crate::validation_chain::{
     ChainType, IncidentReport, IncidentSource, MessageClient, MessageClientConfig, QueryClient,
     QueryClientConfig, RuleQueryResponseDto, TransactionId,
 };
+use crate::BlockchainDataCtx;
 use futures::TryStreamExt;
-use rayon::prelude::*;
 use serde::Deserialize;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
-use tracing::{debug, error, span, Level};
+use tracing::{debug, error, info};
 
 #[derive(Deserialize)]
 pub struct SnifferConfig {
@@ -129,10 +128,9 @@ impl Sniffer {
 
     /// Reports to Validation Chain if the provided transaction matches
     /// any rule from the internal storage.
-    #[tracing::instrument(skip(tx), fields(tx_id = ?tx.tx_index()), level = "debug")]
-    pub async fn observe_transaction(&self, tx: Transaction, tx_hash: String) -> SnifferResult<()> {
-        let tx = Arc::new(tx);
-        let matched_rule_ids = self.check_incidents(tx.clone()).await;
+    #[tracing::instrument(skip(ctx), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "debug"))]
+    pub async fn observe_data(&self, ctx: BlockchainDataCtx) -> SnifferResult<()> {
+        let matched_rule_ids = self.check_incidents(&ctx).await;
 
         let incidents: Vec<_> = matched_rule_ids
             .into_iter()
@@ -141,8 +139,8 @@ impl Sniffer {
                 source: IncidentSource::Transaction {
                     block: None,
                     transaction: TransactionId {
-                        tx_id: tx.tx_index_string(),
-                        hash: tx_hash.clone(),
+                        tx_id: ctx.tx_id().to_string(),
+                        hash: ctx.tx_hash().to_string(),
                     },
                 },
             })
@@ -151,7 +149,7 @@ impl Sniffer {
         debug!(len = incidents.len(), "Matched rules");
 
         if !incidents.is_empty() {
-            debug!(?tx, "Reporting...");
+            debug!(tx_hash = ctx.tx_hash(), "Reporting...");
             self.message_client.report_incidents(incidents).await?;
         }
 
@@ -162,41 +160,32 @@ impl Sniffer {
     /// Returns a list of Rule ids.
     /// This method doesn't fail as we don't want to break all of our pipeline
     /// because of a single invalid rule.
-    async fn check_incidents(&self, tx: Arc<Transaction>) -> Vec<String> {
-        let rules = self.rules.clone();
+    #[tracing::instrument(skip(ctx), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "info"))]
+    async fn check_incidents(&self, ctx: &BlockchainDataCtx) -> Vec<String> {
+        let rules = &self.rules;
+        let futures: Vec<_> = rules.iter().map(|rule| rule.verify(ctx)).collect();
 
-        tokio_rayon::spawn(move || {
-            rules
-                .par_iter()
-                .filter_map(|rule| {
-                    let span = span!(
-                        Level::INFO,
-                        "check_incidents",
-                        rule_id = rule.id().as_str(),
-                        tx_id = tx.tx_index_string()
-                    );
-                    let _guard = span.enter();
+        futures::future::join_all(futures)
+            .await
+            .into_iter()
+            .zip(rules.iter())
+            .filter_map(|(result, rule)| match result {
+                Ok(ctx) => {
+                    debug!(rule_id = rule.id(), "Rule is verified");
 
-                    match rule.verify(&tx, None) {
-                        Ok(ctx) => {
-                            debug!(?rule, "Rule is verified");
-
-                            if ctx.matched() {
-                                debug!("Rule is matched");
-                                Some(rule.id())
-                            } else {
-                                debug!("Rule is NOT matched");
-                                None
-                            }
-                        }
-                        Err(err) => {
-                            error!(?err, "Failed to verify rule, skipping...");
-                            None
-                        }
+                    if ctx.matched {
+                        info!("Rule is matched");
+                        Some(rule.id())
+                    } else {
+                        debug!("Rule is NOT matched");
+                        None
                     }
-                })
-                .collect()
-        })
-        .await
+                }
+                Err(err) => {
+                    error!(?err, "Failed to verify rule, skipping...");
+                    None
+                }
+            })
+            .collect()
     }
 }

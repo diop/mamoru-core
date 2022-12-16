@@ -13,21 +13,18 @@ doctest = false
 [dependencies]
 async-stream = "0.3"
 base64 = "0.13"
-cosmrs = { workspace = true, features = ["grpc"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+cosmrs = { workspace = true, features = ["grpc"] }
+datafusion = { workspace = true }
 envy = "0.4"
-ethnum = { version = "1", features = ["serde"] }
 futures = "0.3"
-jsonpath_lib = "0.3"
 prost = "0.11"
-rayon = "1.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 strum = "0.24"
 strum_macros = "0.24"
 thiserror = "1.0"
 tokio = { version = "1.21", features = ["macros", "rt-multi-thread"] }
-tokio-rayon = "2.1"
 tonic = { version = "0.8", features = ["tls-roots"] }
 tracing = "0.1"
 
@@ -35,7 +32,8 @@ tracing = "0.1"
 tonic-build = "0.8"
 
 [dev-dependencies]
-env_logger = "0.9.1"
+blockchain-data-derive = { path = "../blockchain-data-derive" }
+env_logger = "0.10.0"
 reqwest = { version = "0.11", features = ["json"] }
 test-log = { version = "0.2.11", features = ["trace"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }

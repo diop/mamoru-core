@@ -15,20 +15,36 @@ pub enum SnifferError {
 pub enum RuleParseError {
     #[error("Invalid DateTime format")]
     DateTime(#[source] chrono::ParseError),
+
+    #[error(transparent)]
+    DataError(#[from] DataError),
 }
 
 #[derive(Error, Debug)]
-pub enum RetrieveValueError {
-    #[error("There is no such path as {0}")]
-    NoPath(String),
-    #[error("This object does not include a list of events")]
-    NoEventsInObject,
-    #[error("This object does not include a list of calltraces")]
-    NoCalltracesInObject,
-    #[error(transparent)]
-    SerializationError(#[from] serde_json::Error),
-    #[error(transparent)]
-    JsonPathParsingError(#[from] jsonpath_lib::JsonPathError),
+pub enum DataError {
+    #[error("Failed to create RecordBatch for the internal database.")]
+    CreateRecordBatch(datafusion::arrow::error::ArrowError),
+
+    #[error("Failed to covert RecordBatch to json data.")]
+    RecordBatchToJson(datafusion::arrow::error::ArrowError),
+
+    #[error("Failed to register RecordBatch in the internal database.")]
+    RegisterRecordBatch(datafusion::error::DataFusionError),
+
+    #[error("Failed to parse SQL.")]
+    ParseSql(datafusion::sql::sqlparser::parser::ParserError),
+
+    #[error("Failed to plan an already parsed query.")]
+    PlanQuery(datafusion::error::DataFusionError),
+
+    #[error("Failed to execute query.")]
+    ExecuteQuery(datafusion::error::DataFusionError),
+
+    #[error("We only support a single SQL statement.")]
+    WrongStatementsNumber,
+
+    #[error("We only support SELECT statements. Queries like INSERT, CREATE TABLE, etc are not allowed.")]
+    UnsupportedStatement,
 }
 
 #[derive(Error, Debug)]
