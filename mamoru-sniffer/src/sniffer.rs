@@ -1,12 +1,11 @@
 use crate::errors::SnifferError;
 use crate::from_env;
-use crate::rule::Rule;
 use crate::validation_chain::{
     ChainType, IncidentReport, IncidentSource, MessageClient, MessageClientConfig, QueryClient,
     QueryClientConfig, RuleQueryResponseDto, TransactionId,
 };
-use crate::BlockchainDataCtx;
 use futures::TryStreamExt;
+use mamoru_core::{BlockchainDataCtx, Rule};
 use serde::Deserialize;
 use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
@@ -94,8 +93,11 @@ impl Sniffer {
     /// Emits a log message if some rule is failed to parse.
     #[tracing::instrument(err)]
     pub async fn update_rules(&mut self) -> SnifferResult<()> {
-        let rule_response: Vec<RuleQueryResponseDto> =
-            self.query_client.list_rules().try_collect().await?;
+        let rule_response: Vec<RuleQueryResponseDto> = self
+            .query_client
+            .list_rules(self.chain_type)
+            .try_collect()
+            .await?;
 
         debug!(len = rule_response.len(), "Received rules");
 

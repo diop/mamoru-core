@@ -43,7 +43,7 @@ impl Rule {
         })
     }
 
-    pub(crate) fn id(&self) -> String {
+    pub fn id(&self) -> String {
         self.id.clone()
     }
 

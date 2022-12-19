@@ -1,4 +1,4 @@
-use blockchain_data_derive::BlockchainData;
+use blockchain_data_macro::BlockchainData;
 use datafusion::arrow::datatypes::DataType;
 
 #[derive(BlockchainData)]

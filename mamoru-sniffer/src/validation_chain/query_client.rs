@@ -2,11 +2,13 @@ pub use crate::validation_chain::proto::cosmos::base::query::v1beta1::PageReques
 pub use crate::validation_chain::proto::validation_chain::{
     QueryListRulesResponse, RuleQueryResponseDto,
 };
+pub use crate::validation_chain::ChainType;
+
 use async_stream::try_stream;
 use std::sync::Arc;
 
 use crate::validation_chain::proto::validation_chain::query_client::QueryClient as GeneratedQueryClient;
-use crate::validation_chain::proto::validation_chain::QueryListRulesRequest;
+use crate::validation_chain::proto::validation_chain::{Chain, QueryListRulesRequest};
 use crate::validation_chain::{ClientResult, QueryClientConfig};
 use futures::Stream;
 use tokio::sync::Mutex;
@@ -31,13 +33,16 @@ impl QueryClient {
         })
     }
 
-    pub fn list_rules(&self) -> impl Stream<Item = ClientResult<RuleQueryResponseDto>> + '_ {
+    pub fn list_rules(
+        &self,
+        chain: ChainType,
+    ) -> impl Stream<Item = ClientResult<RuleQueryResponseDto>> + '_ {
         try_stream! {
             let mut key = vec![];
 
             loop {
                 let response = self
-                    .list_rules_paginated(PageRequest {
+                    .list_rules_paginated(chain, PageRequest {
                         key: key.clone(),
                         limit: PAGE_SIZE,
                         ..Default::default()
@@ -65,6 +70,7 @@ impl QueryClient {
 
     async fn list_rules_paginated(
         &self,
+        chain: ChainType,
         pagination: PageRequest,
     ) -> ClientResult<QueryListRulesResponse> {
         let mut client = self.client.lock().await;
@@ -72,6 +78,9 @@ impl QueryClient {
         let response = client
             .list_rules(QueryListRulesRequest {
                 pagination: Some(pagination),
+                chain: Some(Chain {
+                    chain_type: chain.into(),
+                }),
             })
             .await?;
 

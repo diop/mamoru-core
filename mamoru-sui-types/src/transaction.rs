@@ -1,31 +1,33 @@
-use blockchain_data_derive::BlockchainData;
+use blockchain_data_macro::BlockchainData;
 use datafusion::arrow::datatypes::{DataType, TimeUnit};
 
 #[derive(BlockchainData)]
 #[schema(table_name = "transactions")]
-pub struct TestTransaction {
+pub struct Transaction {
     #[schema(type = "DataType::UInt64")]
     pub seq: u64,
 
     #[schema(type = "DataType::Utf8")]
-    pub hash: String,
+    pub digest: String,
 
     #[schema(type = "DataType::Timestamp(TimeUnit::Second, None)")]
     pub time: i64,
 
     #[schema(type = "DataType::UInt64")]
     pub gas_used: u64,
-}
-
-#[derive(BlockchainData)]
-#[schema(table_name = "call_traces")]
-pub struct TestCallTrace {
-    #[schema(type = "DataType::UInt64")]
-    pub seq: u64,
 
     #[schema(type = "DataType::UInt64")]
-    pub tx_seq: u64,
+    pub gas_computation_cost: u64,
+
+    #[schema(type = "DataType::UInt64")]
+    pub gas_storage_cost: u64,
+
+    #[schema(type = "DataType::UInt64")]
+    pub gas_budget: u64,
 
     #[schema(type = "DataType::Utf8")]
-    pub function: String,
+    pub sender: String,
+
+    #[schema(type = "DataType::Utf8")]
+    pub kind: String,
 }

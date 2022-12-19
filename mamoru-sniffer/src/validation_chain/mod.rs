@@ -3,7 +3,6 @@ mod message_client;
 mod proto;
 mod query_client;
 mod type_urls;
-
 use crate::errors::ValidationClientError;
 
 pub type ClientResult<T> = Result<T, ValidationClientError>;

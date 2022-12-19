@@ -31,11 +31,31 @@ impl Default for BlockchainDataCtxBuilder {
     }
 }
 
+pub type TableDef = (&'static str, RecordBatch);
+
 impl BlockchainDataCtxBuilder {
     pub fn new() -> Self {
         Self {
             session: SessionContext::new(),
         }
+    }
+
+    pub fn empty<F>(self, all_tables: F) -> Result<BlockchainDataCtx, ArrowError>
+    where
+        F: FnOnce() -> Result<Vec<TableDef>, ArrowError>,
+    {
+        let session = self.session;
+
+        for (table, empty_batch) in all_tables()? {
+            session.register_batch(table, empty_batch)?;
+        }
+
+        Ok(BlockchainDataCtx {
+            session,
+            tx_id: "EMPTY_CTX".to_string(),
+            tx_hash: "EMPTY_CTX".to_string(),
+            now: chrono::Utc::now().naive_utc(),
+        })
     }
 
     pub fn add_data(&self, data: impl BlockchainData) -> Result<(), DataError> {
@@ -71,11 +91,11 @@ pub struct BlockchainDataCtx {
 }
 
 impl BlockchainDataCtx {
-    pub(crate) fn tx_id(&self) -> &str {
+    pub fn tx_id(&self) -> &str {
         &self.tx_id
     }
 
-    pub(crate) fn tx_hash(&self) -> &str {
+    pub fn tx_hash(&self) -> &str {
         &self.tx_hash
     }
 

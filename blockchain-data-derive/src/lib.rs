@@ -27,6 +27,9 @@ struct StructInfo {
     ident: Ident,
     data: ast::Data<util::Ignored, Field>,
     table_name: String,
+
+    #[darling(default)]
+    mamoru_path: Option<Expr>,
 }
 
 #[derive(FromField, Debug, Clone)]
@@ -77,6 +80,11 @@ impl DeriveImpl {
         let table_name = &self.info.table_name;
         let schema = self.generate_schema()?;
         let to_record_batch = self.generate_to_record_batch()?;
+        let mamoru_path = self
+            .info
+            .mamoru_path
+            .clone()
+            .unwrap_or_else(|| as_expr("mamoru_core"));
 
         Ok(quote! {
             pub struct #batch_struct_name(Vec<#struct_name>);
@@ -87,7 +95,7 @@ impl DeriveImpl {
                 }
             }
 
-            impl ::mamoru_core::BlockchainData for #batch_struct_name {
+            impl #mamoru_path::BlockchainData for #batch_struct_name {
                 fn table_name(&self) -> &'static str {
                     #table_name
                 }

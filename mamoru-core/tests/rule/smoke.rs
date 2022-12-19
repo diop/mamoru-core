@@ -1,4 +1,5 @@
-use crate::rule::{active_rule, data_ctx, inactive_rule};
+use crate::rule::{active_rule, inactive_rule};
+use mamoru_core::test_blockchain_data::data_ctx;
 use mamoru_core::{DataError, Rule};
 use serde_json::json;
 use test_log::test;

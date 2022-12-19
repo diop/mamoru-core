@@ -4,36 +4,20 @@ name = "mamoru-core"
 version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-# Disabling because:
-# - we don't need it yet
-# - doctests fail on generated code
-doctest = false
-
 [dependencies]
-async-stream = "0.3"
-base64 = "0.13"
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-cosmrs = { workspace = true, features = ["grpc"] }
+blockchain-data-macro = { path = "../blockchain-data-macro", optional = true }
+chrono = { workspace = true }
 datafusion = { workspace = true }
-envy = "0.4"
-futures = "0.3"
-prost = "0.11"
-serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-strum = "0.24"
-strum_macros = "0.24"
 thiserror = "1.0"
-tokio = { version = "1.21", features = ["macros", "rt-multi-thread"] }
-tonic = { version = "0.8", features = ["tls-roots"] }
-tracing = "0.1"
-
-[build-dependencies]
-tonic-build = "0.8"
 
 [dev-dependencies]
-blockchain-data-derive = { path = "../blockchain-data-derive" }
 env_logger = "0.10.0"
 reqwest = { version = "0.11", features = ["json"] }
 test-log = { version = "0.2.11", features = ["trace"] }
+tokio = { workspace = true }
+tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+
+[features]
+test_data = ["blockchain-data-macro"]

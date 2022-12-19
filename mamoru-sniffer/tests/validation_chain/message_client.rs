@@ -1,5 +1,5 @@
 use crate::validation_chain::message_client;
-use mamoru_core::validation_chain::{
+use mamoru_sniffer::validation_chain::{
     BlockId, ChainType, IncidentReport, IncidentSource, TransactionId,
 };
 use test_log::test;
@@ -11,7 +11,7 @@ async fn smoke() {
     let rule_ids = vec!["test_rule_id0".to_string(), "test_rule_id1".to_string()];
 
     client
-        .register_sniffer(ChainType::AptosMainnet)
+        .register_sniffer(ChainType::SuiDevnet)
         .await
         .expect("Register sniffer error");
 
