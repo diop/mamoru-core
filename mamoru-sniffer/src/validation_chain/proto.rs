@@ -59,9 +59,9 @@ mod tests {
 
     #[test]
     fn chain_type_from_str() {
-        let chain = ChainType::from_str("APTOS_MAINNET").unwrap();
+        let chain = ChainType::from_str("SUI_DEVNET").unwrap();
 
-        assert!(matches!(chain, ChainType::AptosMainnet))
+        assert!(matches!(chain, ChainType::SuiDevnet))
     }
 
     #[derive(Deserialize)]
@@ -71,8 +71,8 @@ mod tests {
 
     #[test]
     fn chain_type_from_serde() {
-        let object: TestObject = serde_json::from_str("{\"chain\":\"APTOS_MAINNET\"}").unwrap();
+        let object: TestObject = serde_json::from_str("{\"chain\":\"SUI_DEVNET\"}").unwrap();
 
-        assert!(matches!(object.chain, ChainType::AptosMainnet))
+        assert!(matches!(object.chain, ChainType::SuiDevnet))
     }
 }

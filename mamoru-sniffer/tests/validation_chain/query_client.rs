@@ -1,6 +1,6 @@
 use crate::validation_chain::query_client;
 use futures::TryStreamExt;
-use mamoru_sniffer::validation_chain::RuleQueryResponseDto;
+use mamoru_sniffer::validation_chain::{ChainType, RuleQueryResponseDto};
 use test_log::test;
 
 #[test(tokio::test)]
@@ -9,7 +9,7 @@ async fn smoke() {
     let client = query_client().await;
 
     let response = client
-        .list_rules()
+        .list_rules(ChainType::SuiDevnet)
         .try_collect::<Vec<RuleQueryResponseDto>>()
         .await
         .expect("List rules error");

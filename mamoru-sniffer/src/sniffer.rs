@@ -93,8 +93,11 @@ impl Sniffer {
     /// Emits a log message if some rule is failed to parse.
     #[tracing::instrument(err)]
     pub async fn update_rules(&mut self) -> SnifferResult<()> {
-        let rule_response: Vec<RuleQueryResponseDto> =
-            self.query_client.list_rules().try_collect().await?;
+        let rule_response: Vec<RuleQueryResponseDto> = self
+            .query_client
+            .list_rules(self.chain_type)
+            .try_collect()
+            .await?;
 
         debug!(len = rule_response.len(), "Received rules");
 
