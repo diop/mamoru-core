@@ -7,6 +7,8 @@ use mamoru_sniffer::validation_chain::{
 use mamoru_sniffer::{Sniffer, SnifferConfig};
 use serde::Serialize;
 use std::error::Error;
+use tokio_retry::strategy::FixedInterval;
+use tokio_retry::{Action, Retry};
 
 mod message_client;
 mod query_client;
@@ -115,4 +117,11 @@ async fn message_client_config() -> MessageClientConfig {
         chain: Default::default(),
         account: AccountConfig::new(key),
     }
+}
+
+async fn retry<A>(action: A) -> Result<<A as Action>::Item, <A as Action>::Error>
+where
+    A: Action,
+{
+    Retry::spawn(FixedInterval::from_millis(2000).take(20), action).await
 }

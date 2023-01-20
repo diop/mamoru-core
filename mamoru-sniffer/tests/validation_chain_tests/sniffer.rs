@@ -1,24 +1,22 @@
-use crate::validation_chain_tests::{message_client, query_client, sniffer};
+use crate::validation_chain_tests::{message_client, query_client, retry, sniffer};
 use chrono::{Days, Utc};
 use futures::TryStreamExt;
 use mamoru_core::test_blockchain_data::data_ctx;
-use mamoru_sniffer::validation_chain::{ChainType, IncidentQueryResponseDto};
+use mamoru_sniffer::validation_chain::{
+    ChainType, DaemonQueryResponseDto, IncidentQueryResponseDto,
+};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::future;
 use test_log::test;
-use tokio_retry::strategy::FixedInterval;
-use tokio_retry::{Action, Retry};
 
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
     let chain = ChainType::SuiDevnet;
     let tx_hash = random_string();
-    let rule_id = random_string();
 
-    register_active_rule(
-        &rule_id,
+    let daemon_id = register_active_daemon(
         chain,
         format!(
             "SELECT 1 FROM transactions t WHERE t.digest = '{}'",
@@ -29,13 +27,13 @@ async fn smoke() {
 
     let sniffer = sniffer(chain).await;
 
-    let incidents = get_incidents(&rule_id).await;
+    let incidents = get_incidents(&daemon_id).await;
     assert!(incidents.is_empty());
 
     sniffer.observe_data(data_ctx(tx_hash.clone())).await;
 
     retry(|| async {
-        let incidents = get_incidents(&rule_id).await;
+        let incidents = get_incidents(&daemon_id).await;
 
         if incidents.len() == 1 {
             Ok(())
@@ -47,33 +45,22 @@ async fn smoke() {
     .expect("Failed to query incidents.");
 }
 
-async fn retry<A>(action: A) -> Result<<A as Action>::Item, <A as Action>::Error>
-where
-    A: Action,
-{
-    Retry::spawn(FixedInterval::from_millis(1000).take(10), action).await
-}
-
-async fn get_incidents(rule_id: &str) -> Vec<IncidentQueryResponseDto> {
+async fn get_incidents(daemon_id: &str) -> Vec<IncidentQueryResponseDto> {
     query_client()
         .await
         .list_incidents()
-        .try_filter(|i| future::ready(i.rule_id == rule_id))
+        .try_filter(|i| future::ready(i.daemon_id == daemon_id))
         .try_collect::<Vec<_>>()
         .await
         .expect("List incidents error")
 }
 
-async fn register_active_rule(
-    rule_id: impl Into<String>,
-    chain: ChainType,
-    query: impl Into<String>,
-) {
+async fn register_active_daemon(chain: ChainType, query: impl Into<String>) -> String {
     let message_client = message_client().await;
+    let old_daemons = daemons(chain).await;
 
     message_client
-        .register_rule(
-            rule_id,
+        .register_daemon(
             chain,
             query,
             Utc::now(),
@@ -81,6 +68,29 @@ async fn register_active_rule(
         )
         .await
         .expect("Register rule error");
+
+    retry(|| async {
+        let mut new_daemons = daemons(chain).await;
+        new_daemons.retain(|x| !old_daemons.contains(x));
+
+        if let Some(daemon) = new_daemons.first() {
+            Ok(daemon.daemon_id.clone())
+        } else {
+            Err("Failed to find newly created daemon.".to_string())
+        }
+    })
+    .await
+    .expect("Failed to query daemons.")
+}
+
+async fn daemons(chain: ChainType) -> Vec<DaemonQueryResponseDto> {
+    let query_client = query_client().await;
+
+    query_client
+        .list_daemons(chain)
+        .try_collect()
+        .await
+        .expect("List daemons error")
 }
 
 fn random_string() -> String {

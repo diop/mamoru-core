@@ -9,10 +9,10 @@ async fn smoke() {
     let client = query_client().await;
 
     let _ = client
-        .list_rules(ChainType::SuiDevnet)
+        .list_daemons(ChainType::SuiDevnet)
         .try_collect::<Vec<_>>()
         .await
-        .expect("List rules error");
+        .expect("List daemons error");
 
     let _ = client
         .list_sniffers()

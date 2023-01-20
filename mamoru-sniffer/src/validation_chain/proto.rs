@@ -14,16 +14,16 @@ mod includes {
 }
 
 use crate::errors::RuleParseError;
-use crate::validation_chain::{ChainType, RuleQueryResponseDto};
+use crate::validation_chain::{ChainType, DaemonQueryResponseDto};
 use chrono::DateTime;
 use mamoru_core::Rule;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-impl TryFrom<RuleQueryResponseDto> for Rule {
+impl TryFrom<DaemonQueryResponseDto> for Rule {
     type Error = RuleParseError;
 
-    fn try_from(value: RuleQueryResponseDto) -> Result<Self, Self::Error> {
+    fn try_from(value: DaemonQueryResponseDto) -> Result<Self, Self::Error> {
         let activate_since = DateTime::parse_from_rfc3339(&value.activate_since)
             .map_err(RuleParseError::DateTime)?
             .timestamp();
@@ -32,7 +32,7 @@ impl TryFrom<RuleQueryResponseDto> for Rule {
             .timestamp();
 
         let rule = Self::new(
-            value.rule_id,
+            value.daemon_id,
             activate_since,
             inactivate_since,
             &value.content,

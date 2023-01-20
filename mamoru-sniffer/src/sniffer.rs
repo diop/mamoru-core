@@ -1,8 +1,8 @@
 use crate::errors::SnifferError;
 use crate::from_env;
 use crate::validation_chain::{
-    ChainType, IncidentReport, IncidentSource, MessageClient, MessageClientConfig, QueryClient,
-    QueryClientConfig, RuleQueryResponseDto, TransactionId,
+    ChainType, DaemonQueryResponseDto, IncidentReport, IncidentSource, MessageClient,
+    MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
 };
 use futures::TryStreamExt;
 use mamoru_core::{BlockchainDataCtx, Rule};
@@ -83,12 +83,12 @@ impl Sniffer {
     /// any rule from the internal storage.
     #[tracing::instrument(skip(ctx, self), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "debug"))]
     pub async fn observe_data(&self, ctx: BlockchainDataCtx) {
-        let matched_rule_ids = self.check_incidents(&ctx).await;
-        debug!(len = matched_rule_ids.len(), "Matched rules");
+        let matched_daemon_ids = self.check_incidents(&ctx).await;
+        debug!(len = matched_daemon_ids.len(), "Matched rules");
 
-        for rule_id in matched_rule_ids {
+        for daemon_id in matched_daemon_ids {
             let sent = self.report_tx.try_send(IncidentReport {
-                rule_id,
+                daemon_id,
                 source: IncidentSource::Transaction {
                     block: None,
                     transaction: TransactionId {
@@ -182,7 +182,7 @@ impl SnifferBgTask {
             rules_update_interval,
         };
 
-        task.update_rules().await?;
+        task.update_daemons().await?;
 
         Ok(task)
     }
@@ -207,7 +207,7 @@ impl SnifferBgTask {
             tokio::select! {
                 // it's time to update rules
                 _ = rules_interval.tick() => {
-                    if let Err(err) = self.update_rules().await {
+                    if let Err(err) = self.update_daemons().await {
                         error!(error = ?err, "Failed to update rules.")
                     }
                 }
@@ -238,28 +238,28 @@ impl SnifferBgTask {
         }
     }
 
-    /// Updates internal rule storage with rules from Validation Chain.
-    /// Notifies Validation Chain that the sniffer is now subscribed to the new rules.
-    /// Must be called periodically to ensure the sniffer work on relevant rules.
+    /// Updates internal daemon storage with daemons from Validation Chain.
+    /// Notifies Validation Chain that the sniffer is now subscribed to the new daemons.
+    /// Must be called periodically to ensure the sniffer work on relevant daemons.
     /// Emits a log message if some rule is failed to parse.
-    async fn update_rules(&self) -> SnifferResult<()> {
-        let rule_response: Vec<RuleQueryResponseDto> = self
+    async fn update_daemons(&self) -> SnifferResult<()> {
+        let daemon_response: Vec<DaemonQueryResponseDto> = self
             .query_client
-            .list_rules(self.chain_type)
+            .list_daemons(self.chain_type)
             .try_collect()
             .await?;
 
-        debug!(len = rule_response.len(), "Received rules");
+        debug!(len = daemon_response.len(), "Received rules");
 
-        let new_rules: Vec<Rule> = rule_response
+        let new_daemons: Vec<Rule> = daemon_response
             .into_iter()
-            .filter_map(|rule| {
-                let rule_id = rule.rule_id.clone();
+            .filter_map(|daemon| {
+                let daemon_id = daemon.daemon_id.clone();
 
-                match rule.try_into() {
+                match daemon.try_into() {
                     Ok(rule) => Some(rule),
                     Err(err) => {
-                        error!(?err, %rule_id, "Failed to parse rule, skipping...");
+                        error!(?err, %daemon_id, "Failed to parse rule, skipping...");
 
                         None
                     }
@@ -267,16 +267,16 @@ impl SnifferBgTask {
             })
             .collect();
 
-        debug!(len = new_rules.len(), "Parsed rules");
+        debug!(len = new_daemons.len(), "Parsed rules");
 
         self.message_client
-            .subscribe_rules(new_rules.iter().map(|rule| rule.id()).collect())
+            .subscribe_daemons(new_daemons.iter().map(|rule| rule.id()).collect())
             .await?;
 
         {
             let mut rules_guard = self.rules.write().await;
 
-            *rules_guard = new_rules;
+            *rules_guard = new_daemons;
         }
 
         Ok(())

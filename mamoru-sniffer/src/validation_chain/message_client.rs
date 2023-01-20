@@ -10,9 +10,9 @@ use crate::validation_chain::proto::cosmos::tx::v1beta1::service_client::Service
 use crate::validation_chain::proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest};
 use crate::validation_chain::proto::validation_chain::source::SourceType;
 use crate::validation_chain::proto::validation_chain::{
-    Chain, IncidentReportCommandRequestDto, MsgRegisterRule, MsgRegisterSniffer, MsgReportIncident,
-    MsgSubscribeRules, MsgUnregisterSniffer, RuleRegisterCommandRequestDto,
-    RulesSubscribeCommandRequestDto, SnifferRegisterCommandRequestDto,
+    Chain, DaemonRegisterCommandRequestDto, DaemonsSubscribeCommandRequestDto,
+    IncidentReportCommandRequestDto, MsgRegisterDaemon, MsgRegisterSniffer, MsgReportIncident,
+    MsgSubscribeDaemons, MsgUnregisterSniffer, SnifferRegisterCommandRequestDto,
     SnifferUnregisterCommandRequestDto, Source,
 };
 use crate::validation_chain::ClientResult;
@@ -33,7 +33,7 @@ const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
 
 #[derive(Debug)]
 pub struct IncidentReport {
-    pub rule_id: String,
+    pub daemon_id: String,
     pub source: IncidentSource,
 }
 
@@ -133,12 +133,15 @@ impl MessageClient {
         Ok(())
     }
 
-    pub async fn subscribe_rules(&self, rule_ids: Vec<String>) -> ClientResult<()> {
+    pub async fn subscribe_daemons(&self, daemons_ids: Vec<String>) -> ClientResult<()> {
         let sniffer = self.config.address().to_string();
 
-        self.sign_and_broadcast_txs(vec![MsgSubscribeRules {
+        self.sign_and_broadcast_txs(vec![MsgSubscribeDaemons {
             creator: sniffer.clone(),
-            rules: Some(RulesSubscribeCommandRequestDto { rule_ids, sniffer }),
+            daemons: Some(DaemonsSubscribeCommandRequestDto {
+                daemons_ids,
+                sniffer,
+            }),
         }])
         .await?;
 
@@ -164,11 +167,11 @@ impl MessageClient {
                 MsgReportIncident {
                     creator: sniffer.clone(),
                     incident: Some(IncidentReportCommandRequestDto {
+                        daemon_id: report.daemon_id,
                         sniffer: sniffer.clone(),
                         source: Some(Source {
                             source_type: source.into(),
                         }),
-                        rule_id: report.rule_id,
                         block,
                         tx,
                     }),
@@ -181,9 +184,8 @@ impl MessageClient {
         Ok(())
     }
 
-    pub async fn register_rule(
+    pub async fn register_daemon(
         &self,
-        rule_id: impl Into<String>,
         chain: ChainType,
         content: impl Into<String>,
         activate_since: chrono::DateTime<Utc>,
@@ -191,10 +193,9 @@ impl MessageClient {
     ) -> ClientResult<()> {
         let sniffer = self.config.address().to_string();
 
-        self.sign_and_broadcast_txs(vec![MsgRegisterRule {
+        self.sign_and_broadcast_txs(vec![MsgRegisterDaemon {
             creator: sniffer,
-            rule: Some(RuleRegisterCommandRequestDto {
-                rule_id: rule_id.into(),
+            daemon: Some(DaemonRegisterCommandRequestDto {
                 chain: Some(Chain {
                     chain_type: chain.into(),
                 }),

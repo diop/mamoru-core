@@ -1,12 +1,13 @@
 pub use crate::validation_chain::proto::cosmos::base::query::v1beta1::PageRequest;
 pub use crate::validation_chain::proto::validation_chain::{
-    IncidentQueryResponseDto, QueryListRulesResponse, RuleQueryResponseDto, SnifferQueryResponseDto,
+    DaemonQueryResponseDto, IncidentQueryResponseDto, QueryListDaemonsResponse,
+    SnifferQueryResponseDto,
 };
 pub use crate::validation_chain::ChainType;
 
 use crate::validation_chain::proto::validation_chain::query_client::QueryClient as GeneratedQueryClient;
 use crate::validation_chain::proto::validation_chain::{
-    Chain, QueryListIncidentsRequest, QueryListIncidentsResponse, QueryListRulesRequest,
+    Chain, QueryListDaemonsRequest, QueryListIncidentsRequest, QueryListIncidentsResponse,
     QueryListSniffersRequest, QueryListSniffersResponse,
 };
 use crate::validation_chain::{ClientResult, QueryClientConfig};
@@ -71,8 +72,8 @@ impl QueryClient {
     }
 
     as_stream! {
-        pub fn list_rules(chain: ChainType) -> impl Stream<Item = ClientResult<RuleQueryResponseDto>> {
-            list_rules_paginated, rules
+        pub fn list_daemons(chain: ChainType) -> impl Stream<Item = ClientResult<DaemonQueryResponseDto>> {
+            list_daemons_paginated, daemons
         }
     }
 
@@ -88,15 +89,15 @@ impl QueryClient {
         }
     }
 
-    async fn list_rules_paginated(
+    async fn list_daemons_paginated(
         &self,
         chain: ChainType,
         pagination: PageRequest,
-    ) -> ClientResult<QueryListRulesResponse> {
+    ) -> ClientResult<QueryListDaemonsResponse> {
         let mut client = self.client.clone();
 
         let response = client
-            .list_rules(QueryListRulesRequest {
+            .list_daemons(QueryListDaemonsRequest {
                 pagination: Some(pagination),
                 chain: Some(Chain {
                     chain_type: chain.into(),

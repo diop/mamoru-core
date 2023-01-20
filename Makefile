@@ -25,4 +25,4 @@ validation-chain-test:
 	RUST_LOG=$(RUST_LOG) \
 	MAMORU_ENDPOINT=$(MAMORU_ENDPOINT) \
 	MAMORU_TEST_FAUCET_ENDPOINT=$(MAMORU_TEST_FAUCET_ENDPOINT) \
-    cargo test validation_chain -- --nocapture --ignored
+    cargo test validation_chain -- --nocapture --ignored --test-threads 1
