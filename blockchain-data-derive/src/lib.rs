@@ -213,6 +213,7 @@ impl Builders {
             as_expr("DataType::UInt64") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::UInt64Type>::with_capacity },
             as_expr("DataType::UInt32") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::UInt32Type>::with_capacity },
             as_expr("DataType::UInt8") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::UInt8Type>::with_capacity },
+            as_expr("DataType::Float64") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::Float64Type>::with_capacity },
             as_expr("DataType::Timestamp(TimeUnit::Second, None)") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::TimestampSecondType>::with_capacity },
         };
 

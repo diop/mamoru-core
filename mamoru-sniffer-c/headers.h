@@ -22,6 +22,93 @@ FfiTransactionBatch_t * new_transaction_batch (void);
 #include <stddef.h>
 #include <stdint.h>
 
+void transaction_batch_append (
+    FfiTransactionBatch_t * batch,
+    uint32_t tx_index,
+    char const * tx_hash,
+    uint64_t block_index,
+    uint8_t typ,
+    uint64_t nonce,
+    uint64_t status,
+    uint64_t timestamp,
+    char const * from,
+    char const * to,
+    uint64_t value,
+    uint64_t fee,
+    uint64_t gas_price,
+    uint64_t gas_limit,
+    uint64_t gas_used,
+    char const * method,
+    double size);
+
+typedef struct FfiBlockchainData FfiBlockchainData_t;
+
+/** \brief
+ *  Frees `object` argument.
+ */
+FfiBlockchainData_t * transaction_batch_finish (
+    FfiTransactionBatch_t * object);
+
+typedef struct FfiTransactionArgBatch FfiTransactionArgBatch_t;
+
+FfiTransactionArgBatch_t * new_transaction_arg_batch (void);
+
+void transaction_arg_batch_append (
+    FfiTransactionArgBatch_t * batch,
+    uint32_t tx_index,
+    char const * arg);
+
+/** \brief
+ *  Frees `object` argument.
+ */
+FfiBlockchainData_t * transaction_arg_batch_finish (
+    FfiTransactionArgBatch_t * object);
+
+typedef struct FfiCallTraceBatch FfiCallTraceBatch_t;
+
+FfiCallTraceBatch_t * new_call_trace_batch (void);
+
+void call_trace_batch_append (
+    FfiCallTraceBatch_t * batch,
+    uint32_t seq,
+    uint32_t depth,
+    uint32_t tx_index,
+    uint64_t block_index,
+    char const * typ,
+    char const * from,
+    char const * to,
+    uint64_t value,
+    uint64_t gas_limit,
+    uint64_t gas_used,
+    char const * method_id);
+
+/** \brief
+ *  Frees `object` argument.
+ */
+FfiBlockchainData_t * call_trace_batch_finish (
+    FfiCallTraceBatch_t * object);
+
+typedef struct FfiCallTraceArgBatch FfiCallTraceArgBatch_t;
+
+FfiCallTraceArgBatch_t * new_call_trace_arg_batch (void);
+
+void call_trace_arg_batch_append (
+    FfiCallTraceArgBatch_t * batch,
+    uint32_t call_trace_seq,
+    uint32_t tx_index,
+    uint64_t block_index,
+    char const * arg);
+
+/** \brief
+ *  Frees `object` argument.
+ */
+FfiBlockchainData_t * call_trace_arg_batch_finish (
+    FfiCallTraceArgBatch_t * object);
+
+typedef struct FfiBlockBatch FfiBlockBatch_t;
+
+FfiBlockBatch_t * new_block_batch (void);
+
 /** \brief
  *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
  * 
@@ -49,25 +136,72 @@ typedef struct slice_ref_uint8 {
 
 } slice_ref_uint8_t;
 
-void transaction_batch_append (
-    FfiTransactionBatch_t * batch,
-    uint64_t index,
+void block_batch_append (
+    FfiBlockBatch_t * batch,
     uint64_t block_index,
-    slice_ref_uint8_t hash,
-    uint8_t typ,
-    uint32_t nonce,
+    char const * hash,
+    char const * parent_hash,
+    char const * state_root,
+    uint64_t nonce,
     char const * status,
-    uint32_t timestamp,
-    slice_ref_uint8_t from,
-    slice_ref_uint8_t to);
-
-typedef struct FfiBlockchainData FfiBlockchainData_t;
+    uint64_t timestamp,
+    slice_ref_uint8_t block_reward,
+    char const * fee_recipient,
+    uint64_t total_difficulty,
+    double size,
+    uint64_t gas_used,
+    uint64_t gas_limit,
+    slice_ref_uint8_t burnt_fees,
+    uint32_t pos_proposed_on_time,
+    uint32_t pos_slot,
+    uint32_t pos_epoch,
+    uint32_t pos_proposer_index,
+    slice_ref_uint8_t pos_slot_root_hash,
+    uint32_t pos_beacon_chain_deposit_count,
+    slice_ref_uint8_t pos_slot_graffiti,
+    slice_ref_uint8_t pos_block_randomness,
+    slice_ref_uint8_t pos_random_reveal);
 
 /** \brief
  *  Frees `object` argument.
  */
-FfiBlockchainData_t * transaction_batch_finish (
-    FfiTransactionBatch_t * object);
+FfiBlockchainData_t * block_batch_finish (
+    FfiBlockBatch_t * object);
+
+typedef struct FfiEventBatch FfiEventBatch_t;
+
+FfiEventBatch_t * new_event_batch (void);
+
+void event_batch_append (
+    FfiEventBatch_t * batch,
+    uint32_t index,
+    char const * address,
+    slice_ref_uint8_t data,
+    uint64_t block_number,
+    char const * tx_hash,
+    uint32_t tx_index,
+    char const * block_hash);
+
+/** \brief
+ *  Frees `object` argument.
+ */
+FfiBlockchainData_t * event_batch_finish (
+    FfiEventBatch_t * object);
+
+typedef struct FfiEventTopicBatch FfiEventTopicBatch_t;
+
+FfiEventTopicBatch_t * new_event_topic_batch (void);
+
+void event_topic_batch_append (
+    FfiEventTopicBatch_t * batch,
+    uint32_t event_index,
+    char const * topic);
+
+/** \brief
+ *  Frees `object` argument.
+ */
+FfiBlockchainData_t * event_topic_batch_finish (
+    FfiEventTopicBatch_t * object);
 
 typedef struct FfiSnifferResult FfiSnifferResult_t;
 
