@@ -8,8 +8,12 @@ runs:
       with:
         override: true
         components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v2
     - name: Install Protoc
       uses: arduino/setup-protoc@v1
       with:
         repo-token: ${{ inputs.repo-token }}
-
+    - name: Install NPM
+      uses: actions/setup-node@v3
+      with:
+        node-version: 19.3

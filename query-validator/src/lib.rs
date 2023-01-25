@@ -1,7 +1,7 @@
 mod error;
 pub use error::*;
 
-use mamoru_core::{BlockchainDataCtxBuilder, DataError, Rule};
+use mamoru_core::{BlockchainDataCtxBuilder, Daemon, DataError};
 
 /// Represents possible blockchains as each one has different schema
 #[derive(Debug)]
@@ -26,7 +26,7 @@ pub async fn validate(chain: ChainType, query: &str) -> Result<(), ValidateError
             ),
     };
 
-    let rule = validation_rule(query)?;
+    let rule = validation_daemon(query)?;
     let result = rule.verify(&ctx).await?;
 
     if result.matched {
@@ -36,8 +36,8 @@ pub async fn validate(chain: ChainType, query: &str) -> Result<(), ValidateError
     Ok(())
 }
 
-fn validation_rule(query: &str) -> Result<Rule, DataError> {
-    Rule::new("QUERY_VALIDATE".to_string(), 0, i64::MAX, query)
+fn validation_daemon(query: &str) -> Result<Daemon, DataError> {
+    Daemon::new_sql("QUERY_VALIDATE".to_string(), 0, i64::MAX, query)
 }
 
 #[cfg(test)]

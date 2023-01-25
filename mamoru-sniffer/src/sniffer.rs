@@ -5,7 +5,7 @@ use crate::validation_chain::{
     MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
 };
 use futures::TryStreamExt;
-use mamoru_core::{BlockchainDataCtx, Rule};
+use mamoru_core::{BlockchainDataCtx, Daemon};
 use serde::Deserialize;
 use std::ops::Add;
 use std::sync::Arc;
@@ -54,7 +54,7 @@ type SnifferResult<T> = Result<T, SnifferError>;
 /// Defines an API for Rule matching and incident reporting.
 pub struct Sniffer {
     report_tx: Sender<IncidentReport>,
-    rules: Arc<RwLock<Vec<Rule>>>,
+    rules: Arc<RwLock<Vec<Daemon>>>,
 }
 
 impl Sniffer {
@@ -156,7 +156,7 @@ impl Sniffer {
 struct SnifferBgTask {
     message_client: MessageClient,
     query_client: QueryClient,
-    rules: Arc<RwLock<Vec<Rule>>>,
+    daemons: Arc<RwLock<Vec<Daemon>>>,
     chain_type: ChainType,
     report_rx: Receiver<IncidentReport>,
     rules_update_interval: Duration,
@@ -166,7 +166,7 @@ impl SnifferBgTask {
     pub(crate) async fn new(
         message_client: MessageClient,
         query_client: QueryClient,
-        rules: Arc<RwLock<Vec<Rule>>>,
+        daemons: Arc<RwLock<Vec<Daemon>>>,
         chain_type: ChainType,
         report_rx: Receiver<IncidentReport>,
         rules_update_interval: Duration,
@@ -176,7 +176,7 @@ impl SnifferBgTask {
         let task = Self {
             message_client,
             query_client,
-            rules,
+            daemons,
             chain_type,
             report_rx,
             rules_update_interval,
@@ -251,7 +251,7 @@ impl SnifferBgTask {
 
         debug!(len = daemon_response.len(), "Received rules");
 
-        let new_daemons: Vec<Rule> = daemon_response
+        let new_daemons: Vec<Daemon> = daemon_response
             .into_iter()
             .filter_map(|daemon| {
                 let daemon_id = daemon.daemon_id.clone();
@@ -259,7 +259,7 @@ impl SnifferBgTask {
                 match daemon.try_into() {
                     Ok(rule) => Some(rule),
                     Err(err) => {
-                        error!(?err, %daemon_id, "Failed to parse rule, skipping...");
+                        error!(?err, %daemon_id, "Failed to parse daemon, skipping...");
 
                         None
                     }
@@ -267,16 +267,16 @@ impl SnifferBgTask {
             })
             .collect();
 
-        debug!(len = new_daemons.len(), "Parsed rules");
+        debug!(len = new_daemons.len(), "Parsed daemons");
 
         self.message_client
             .subscribe_daemons(new_daemons.iter().map(|rule| rule.id()).collect())
             .await?;
 
         {
-            let mut rules_guard = self.rules.write().await;
+            let mut daemons_guard = self.daemons.write().await;
 
-            *rules_guard = new_daemons;
+            *daemons_guard = new_daemons;
         }
 
         Ok(())

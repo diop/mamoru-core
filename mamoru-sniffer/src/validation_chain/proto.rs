@@ -13,25 +13,25 @@ mod includes {
     tonic::include_proto!("includes");
 }
 
-use crate::errors::RuleParseError;
+use crate::errors::DaemonParseError;
 use crate::validation_chain::{ChainType, DaemonQueryResponseDto};
 use chrono::DateTime;
-use mamoru_core::Rule;
+use mamoru_core::Daemon;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 
-impl TryFrom<DaemonQueryResponseDto> for Rule {
-    type Error = RuleParseError;
+impl TryFrom<DaemonQueryResponseDto> for Daemon {
+    type Error = DaemonParseError;
 
     fn try_from(value: DaemonQueryResponseDto) -> Result<Self, Self::Error> {
         let activate_since = DateTime::parse_from_rfc3339(&value.activate_since)
-            .map_err(RuleParseError::DateTime)?
+            .map_err(DaemonParseError::DateTime)?
             .timestamp();
         let inactivate_since = DateTime::parse_from_rfc3339(&value.inactivate_since)
-            .map_err(RuleParseError::DateTime)?
+            .map_err(DaemonParseError::DateTime)?
             .timestamp();
 
-        let rule = Self::new(
+        let rule = Self::new_sql(
             value.daemon_id,
             activate_since,
             inactivate_since,
