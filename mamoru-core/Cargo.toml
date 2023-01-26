@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [dependencies]
 as-ffi-bindings = { git = "https://github.com/Mamoru-Foundation/as-ffi-bindings.git" }
-async-trait = "0.1.62"
+async-trait = "^0.1.41"
 bincode = "1.3.3"
 blockchain-data-macro = { path = "../blockchain-data-macro", optional = true }
 chrono = { workspace = true }
