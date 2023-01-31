@@ -49,6 +49,6 @@ pub struct CallTraceArg {
     #[schema(type = "DataType::UInt64")]
     pub call_trace_seq: u64,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub arg: ValueData,
 }

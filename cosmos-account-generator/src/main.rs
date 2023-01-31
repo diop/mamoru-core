@@ -17,6 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Address: {}", public_key.account_id("cosmos")?);
     println!("Pub key: {}", public_key.to_string());
     println!("Private key (base64): {}", base64::encode(xprv.to_bytes()));
+    println!("Mnemonic: {}", mnemonic.phrase());
 
     Ok(())
 }

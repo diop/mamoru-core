@@ -209,6 +209,7 @@ impl Builders {
     fn new(arrow: &Expr) -> Self {
         let map = hashmap! {
             as_expr("DataType::Binary") => quote!{ |len: usize| { #arrow::array::BinaryBuilder::with_capacity(len, len * 32) } },
+            as_expr("DataType::LargeBinary") => quote!{ |len: usize| { #arrow::array::LargeBinaryBuilder::with_capacity(len, len * 32) } },
             as_expr("DataType::Utf8") => quote!{ |len: usize| { #arrow::array::StringBuilder::with_capacity(len, len * 32) } },
             as_expr("DataType::UInt64") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::UInt64Type>::with_capacity },
             as_expr("DataType::UInt32") => quote!{ #arrow::array::PrimitiveBuilder::<#arrow::datatypes::UInt32Type>::with_capacity },
