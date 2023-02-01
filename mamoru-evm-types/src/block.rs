@@ -45,34 +45,4 @@ pub struct Block {
 
     #[schema(type = "DataType::UInt64")]
     pub gas_limit: u64,
-
-    #[schema(type = "DataType::Binary")]
-    pub burnt_fees: Vec<u8>,
-
-    #[schema(type = "DataType::UInt32")]
-    pub pos_proposed_on_time: u32,
-
-    #[schema(type = "DataType::UInt32")]
-    pub pos_slot: u32,
-
-    #[schema(type = "DataType::UInt32")]
-    pub pos_epoch: u32,
-
-    #[schema(type = "DataType::UInt32")]
-    pub pos_proposer_index: u32,
-
-    #[schema(type = "DataType::Binary")]
-    pub pos_slot_root_hash: Vec<u8>,
-
-    #[schema(type = "DataType::UInt32")]
-    pub pos_beacon_chain_deposit_count: u32,
-
-    #[schema(type = "DataType::Binary")]
-    pub pos_slot_graffiti: Vec<u8>,
-
-    #[schema(type = "DataType::Binary")]
-    pub pos_block_randomness: Vec<u8>,
-
-    #[schema(type = "DataType::Binary")]
-    pub pos_random_reveal: Vec<u8>,
 }

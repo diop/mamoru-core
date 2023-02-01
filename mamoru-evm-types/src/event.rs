@@ -30,19 +30,22 @@ pub struct Event {
     #[schema(type = "DataType::Utf8")]
     pub address: String,
 
+    #[schema(type = "DataType::Binary")]
+    pub topic0: Vec<u8>,
+
+    #[schema(type = "DataType::Binary")]
+    pub topic1: Vec<u8>,
+
+    #[schema(type = "DataType::Binary")]
+    pub topic2: Vec<u8>,
+
+    #[schema(type = "DataType::Binary")]
+    pub topic3: Vec<u8>,
+
+    #[schema(type = "DataType::Binary")]
+    pub topic4: Vec<u8>,
+
     // supplied by the contract, usually ABI-encoded
     #[schema(type = "DataType::Binary")]
     pub data: Vec<u8>,
-}
-
-#[derive(BlockchainData)]
-#[schema(table_name = "event_topics")]
-pub struct EventTopic {
-    // index of the log in the block
-    #[schema(type = "DataType::UInt32")]
-    pub event_index: u32,
-
-    // list of topics provided by the contract.
-    #[schema(type = "DataType::Utf8")]
-    pub topic: String,
 }

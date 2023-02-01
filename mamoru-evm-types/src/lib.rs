@@ -13,13 +13,5 @@ use datafusion::arrow::error::ArrowError;
 use mamoru_core::{BlockchainData, TableDef};
 
 pub fn all_tables() -> Result<Vec<TableDef>, ArrowError> {
-    tables![
-        Transaction,
-        TransactionArg,
-        CallTrace,
-        CallTraceArg,
-        Block,
-        Event,
-        EventTopic,
-    ]
+    tables![Transaction, CallTrace, Block, Event,]
 }

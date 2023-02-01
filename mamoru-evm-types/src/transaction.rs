@@ -27,9 +27,6 @@ pub struct Transaction {
     #[schema(type = "DataType::UInt64")]
     pub block_index: u64,
 
-    #[schema(type = "DataType::UInt64")]
-    pub timestamp: u64,
-
     #[schema(type = "DataType::Utf8")]
     pub from: String,
 
@@ -57,21 +54,12 @@ pub struct Transaction {
     #[schema(type = "DataType::UInt64")]
     pub gas_used: u64,
 
-    #[schema(type = "DataType::Utf8")]
-    pub method: String,
+    // Data returns the input data of the transaction.
+    #[schema(type = "DataType::Binary")]
+    pub input: Vec<u8>,
 
     // Size returns the true RLP encoded storage size of the transaction, either by
     // encoding and returning it, or returning a previously cached value.
     #[schema(type = "DataType::Float64")]
     pub size: f64,
-}
-
-#[derive(BlockchainData)]
-#[schema(table_name = "transaction_args")]
-pub struct TransactionArg {
-    #[schema(type = "DataType::UInt32")]
-    pub tx_index: u32,
-
-    #[schema(type = "DataType::Utf8")]
-    pub arg: String,
 }

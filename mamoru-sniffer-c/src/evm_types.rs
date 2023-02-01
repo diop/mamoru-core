@@ -1,8 +1,6 @@
 use crate::ffi_types::FfiBlockchainData;
 use mamoru_evm_types::{
-    Block, BlockBatch, CallTrace, CallTraceArg, CallTraceArgBatch, CallTraceBatch, Event,
-    EventBatch, EventTopic, EventTopicBatch, Transaction, TransactionArg, TransactionArgBatch,
-    TransactionBatch,
+    Block, BlockBatch, CallTrace, CallTraceBatch, Event, EventBatch, Transaction, TransactionBatch,
 };
 use safer_ffi::prelude::*;
 
@@ -29,7 +27,6 @@ fn transaction_batch_append<'a>(
     typ: u8,
     nonce: u64,
     status: u64,
-    timestamp: u64,
     from: char_p::Ref<'a>,
     to: Option<char_p::Ref<'a>>,
     value: u64,
@@ -37,7 +34,7 @@ fn transaction_batch_append<'a>(
     gas_price: u64,
     gas_limit: u64,
     gas_used: u64,
-    method: char_p::Ref<'a>,
+    input: c_slice::Ref<'a, u8>,
     size: f64,
 ) {
     let batch = &mut batch.inner.0;
@@ -49,7 +46,6 @@ fn transaction_batch_append<'a>(
         nonce,
         status,
         block_index,
-        timestamp,
         from: from.to_str().to_string(),
         to: to.map(|to| to.to_str().to_string()),
         value,
@@ -57,7 +53,7 @@ fn transaction_batch_append<'a>(
         gas_price,
         gas_limit,
         gas_used,
-        method: method.to_str().to_string(),
+        input: input.to_vec(),
         size,
     });
 }
@@ -66,44 +62,6 @@ fn transaction_batch_append<'a>(
 #[ffi_export]
 fn transaction_batch_finish(
     object: repr_c::Box<FfiTransactionBatch>,
-) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
-
-    repr_c::Box::new(FfiBlockchainData { inner })
-}
-
-// TransactionArg
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiTransactionArgBatch {
-    pub inner: Box<TransactionArgBatch>,
-}
-
-#[ffi_export]
-fn new_transaction_arg_batch() -> repr_c::Box<FfiTransactionArgBatch> {
-    let inner = Box::new(TransactionArgBatch(Vec::new()));
-
-    repr_c::Box::new(FfiTransactionArgBatch { inner })
-}
-
-#[ffi_export]
-fn transaction_arg_batch_append<'a>(
-    batch: &mut FfiTransactionArgBatch,
-    tx_index: u32,
-    arg: char_p::Ref<'a>,
-) {
-    let batch = &mut batch.inner.0;
-
-    batch.push(TransactionArg {
-        tx_index,
-        arg: arg.to_str().to_string(),
-    });
-}
-
-/// Frees `object` argument.
-#[ffi_export]
-fn transaction_arg_batch_finish(
-    object: repr_c::Box<FfiTransactionArgBatch>,
 ) -> repr_c::Box<FfiBlockchainData> {
     let inner = object.into().inner;
 
@@ -136,7 +94,7 @@ fn call_trace_batch_append<'a>(
     value: u64,
     gas_limit: u64,
     gas_used: u64,
-    method_id: char_p::Ref<'a>,
+    input: c_slice::Ref<'a, u8>,
 ) {
     let batch = &mut batch.inner.0;
     batch.push(CallTrace {
@@ -150,7 +108,7 @@ fn call_trace_batch_append<'a>(
         value,
         gas_limit,
         gas_used,
-        method_id: method_id.to_str().to_string(),
+        input: input.to_vec(),
     });
 }
 
@@ -161,45 +119,6 @@ fn call_trace_batch_finish(
 ) -> repr_c::Box<FfiBlockchainData> {
     let inner = object.into().inner;
 
-    repr_c::Box::new(FfiBlockchainData { inner })
-}
-
-// CallTraceArg
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiCallTraceArgBatch {
-    pub inner: Box<CallTraceArgBatch>,
-}
-
-#[ffi_export]
-fn new_call_trace_arg_batch() -> repr_c::Box<FfiCallTraceArgBatch> {
-    let inner = Box::new(CallTraceArgBatch(Vec::new()));
-    repr_c::Box::new(FfiCallTraceArgBatch { inner })
-}
-
-#[ffi_export]
-fn call_trace_arg_batch_append<'a>(
-    batch: &mut FfiCallTraceArgBatch,
-    call_trace_seq: u32,
-    tx_index: u32,
-    block_index: u64,
-    arg: char_p::Ref<'a>,
-) {
-    let batch = &mut batch.inner.0;
-    batch.push(CallTraceArg {
-        call_trace_seq,
-        tx_index,
-        block_index,
-        arg: arg.to_str().to_string(),
-    });
-}
-
-/// Frees `object` argument.
-#[ffi_export]
-fn call_trace_arg_batch_finish(
-    object: repr_c::Box<FfiCallTraceArgBatch>,
-) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
     repr_c::Box::new(FfiBlockchainData { inner })
 }
 
@@ -232,16 +151,6 @@ fn block_batch_append<'a>(
     size: f64,
     gas_used: u64,
     gas_limit: u64,
-    burnt_fees: c_slice::Ref<'a, u8>,
-    pos_proposed_on_time: u32,
-    pos_slot: u32,
-    pos_epoch: u32,
-    pos_proposer_index: u32,
-    pos_slot_root_hash: c_slice::Ref<'a, u8>,
-    pos_beacon_chain_deposit_count: u32,
-    pos_slot_graffiti: c_slice::Ref<'a, u8>,
-    pos_block_randomness: c_slice::Ref<'a, u8>,
-    pos_random_reveal: c_slice::Ref<'a, u8>,
 ) {
     let batch = &mut batch.inner.0;
 
@@ -259,16 +168,6 @@ fn block_batch_append<'a>(
         size,
         gas_used,
         gas_limit,
-        burnt_fees: burnt_fees.to_vec(),
-        pos_proposed_on_time,
-        pos_slot,
-        pos_epoch,
-        pos_proposer_index,
-        pos_slot_root_hash: pos_slot_root_hash.to_vec(),
-        pos_beacon_chain_deposit_count,
-        pos_slot_graffiti: pos_slot_graffiti.to_vec(),
-        pos_block_randomness: pos_block_randomness.to_vec(),
-        pos_random_reveal: pos_random_reveal.to_vec(),
     });
 }
 
@@ -297,62 +196,37 @@ fn event_batch_append<'a>(
     batch: &mut FfiEventBatch,
     index: u32,
     address: char_p::Ref<'a>,
-    data: c_slice::Ref<'a, u8>,
     block_number: u64,
     tx_hash: char_p::Ref<'a>,
     tx_index: u32,
     block_hash: char_p::Ref<'a>,
+    topic0: c_slice::Ref<'a, u8>,
+    topic1: c_slice::Ref<'a, u8>,
+    topic2: c_slice::Ref<'a, u8>,
+    topic3: c_slice::Ref<'a, u8>,
+    topic4: c_slice::Ref<'a, u8>,
+    data: c_slice::Ref<'a, u8>,
 ) {
     let batch = &mut batch.inner.0;
     batch.push(Event {
         index,
         address: address.to_str().to_string(),
-        data: data.to_vec(),
         block_number,
         tx_hash: tx_hash.to_str().to_string(),
         tx_index,
         block_hash: block_hash.to_str().to_string(),
+        topic0: topic0.to_vec(),
+        topic1: topic1.to_vec(),
+        topic2: topic2.to_vec(),
+        topic3: topic3.to_vec(),
+        topic4: topic4.to_vec(),
+        data: data.to_vec(),
     });
 }
 
 /// Frees `object` argument.
 #[ffi_export]
 fn event_batch_finish(object: repr_c::Box<FfiEventBatch>) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
-    repr_c::Box::new(FfiBlockchainData { inner })
-}
-
-// EventTopic
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiEventTopicBatch {
-    pub inner: Box<EventTopicBatch>,
-}
-
-#[ffi_export]
-fn new_event_topic_batch() -> repr_c::Box<FfiEventTopicBatch> {
-    let inner = Box::new(EventTopicBatch(Vec::new()));
-    repr_c::Box::new(FfiEventTopicBatch { inner })
-}
-
-#[ffi_export]
-fn event_topic_batch_append<'a>(
-    batch: &mut FfiEventTopicBatch,
-    event_index: u32,
-    topic: char_p::Ref<'a>,
-) {
-    let batch = &mut batch.inner.0;
-    batch.push(EventTopic {
-        event_index,
-        topic: topic.to_str().to_string(),
-    });
-}
-
-/// Frees `object` argument.
-#[ffi_export]
-fn event_topic_batch_finish(
-    object: repr_c::Box<FfiEventTopicBatch>,
-) -> repr_c::Box<FfiBlockchainData> {
     let inner = object.into().inner;
     repr_c::Box::new(FfiBlockchainData { inner })
 }
