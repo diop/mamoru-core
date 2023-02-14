@@ -1,4 +1,4 @@
-## C ABI compatible layer for `rule-expression-validator`
+## C ABI compatible layer for `query-validator`
 
 The layer enables developers to use `mamoru-core` with 
 any programming language that can call C libraries.
@@ -9,13 +9,13 @@ any programming language that can call C libraries.
 Add this crate as a dependency to your project and compile:
 
 ```toml
-mamoru-core-c = {git = "ssh://git@github.com/Mamoru-Foundation/mamoru-core.git", branch = "main"}
+query-validator-c = {git = "ssh://git@github.com/Mamoru-Foundation/mamoru-core.git", branch = "main"}
 ```
 
 It is recommended to setup binary size optimization:
 ```toml
 [profile.release]
-opt-level = 3
+opt-level = "z"
 strip = "debuginfo"
 lto = true
 ```
@@ -30,8 +30,3 @@ make headers
 
 Headers are available at crate's root folder: `headers.h`.
 Copy the file to the target project to use.
-
-
-## Current limitations
-
-All FFI exports should be in `lib.rs` file.

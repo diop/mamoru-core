@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use query_validator::{validate, ChainType};
+use query_validator::{validate_assembly_script, validate_sql, ChainType};
 use safer_ffi::prelude::*;
 
 #[derive_ReprC]
@@ -36,11 +36,32 @@ lazy_static! {
 }
 
 #[ffi_export]
-fn ffi_validate(chain: FfiChainType, query: char_p::Ref<'_>) -> FfiValidationResult {
+fn ffi_validate_sql<'a>(chain: FfiChainType, query: char_p::Ref<'a>) -> FfiValidationResult {
     let chain = chain.into();
     let query = query.to_str();
 
-    let result = HANDLE.block_on(async move { validate(chain, query).await });
+    let result = HANDLE.block_on(async move { validate_sql(chain, query).await });
+
+    let (is_error, message) = match result {
+        Ok(_) => (false, "".to_string()),
+        Err(err) => (true, format!("{:#?}", err)),
+    };
+
+    FfiValidationResult {
+        is_error,
+        message: message.try_into().unwrap(),
+    }
+}
+
+#[ffi_export]
+fn ffi_validate_assembly_script<'a>(
+    chain: FfiChainType,
+    bytes: c_slice::Ref<'a, u8>,
+) -> FfiValidationResult {
+    let chain = chain.into();
+    let bytes = bytes.as_slice();
+
+    let result = HANDLE.block_on(async move { validate_assembly_script(chain, bytes).await });
 
     let (is_error, message) = match result {
         Ok(_) => (false, "".to_string()),

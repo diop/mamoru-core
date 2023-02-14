@@ -46,9 +46,40 @@ typedef struct FfiValidationResult {
 
 } FfiValidationResult_t;
 
-FfiValidationResult_t ffi_validate (
+FfiValidationResult_t ffi_validate_sql (
     FfiChainType_t chain,
     char const * query);
+
+/** \brief
+ *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
+ * 
+ *  # C layout (for some given type T)
+ * 
+ *  ```c
+ *  typedef struct {
+ *      // Cannot be NULL
+ *      T * ptr;
+ *      size_t len;
+ *  } slice_T;
+ *  ```
+ * 
+ *  # Nullable pointer?
+ * 
+ *  If you want to support the above typedef, but where the `ptr` field is
+ *  allowed to be `NULL` (with the contents of `len` then being undefined)
+ *  use the `Option< slice_ptr<_> >` type.
+ */
+typedef struct slice_ref_uint8 {
+
+    uint8_t const * ptr;
+
+    size_t len;
+
+} slice_ref_uint8_t;
+
+FfiValidationResult_t ffi_validate_assembly_script (
+    FfiChainType_t chain,
+    slice_ref_uint8_t bytes);
 
 void ffi_drop_validation_result (
     FfiValidationResult_t result);
