@@ -1,8 +1,9 @@
+mod imports;
+
 use crate::daemon::{Executor, Incident};
 use crate::{BlockchainDataCtx, DataError};
 use as_ffi_bindings::{Read, StringPtr, Write};
 use async_trait::async_trait;
-use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use std::sync::mpsc;
 use tracing::Level;
@@ -33,6 +34,27 @@ pub struct AssemblyScriptExecutor {
 
     /// The engine used to compile the module.
     engine: Engine,
+}
+
+#[async_trait]
+impl Executor for AssemblyScriptExecutor {
+    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
+        let (mut store, entrypoint, incidents_rx) = self.prepare_vm(ctx)?;
+
+        tokio::task::spawn_blocking(move || {
+            let span = tracing::span!(Level::TRACE, "assembly_script:entrypoint");
+            let _guard = span.enter();
+
+            entrypoint.call(&mut store)
+        })
+        .await
+        .expect("BUG: AssemblyScriptExecutor entrypoint call is panicked.")
+        .map_err(DataError::WasmRuntime)?;
+
+        let incidents = incidents_rx.into_iter().collect();
+
+        Ok(incidents)
+    }
 }
 
 impl AssemblyScriptExecutor {
@@ -71,27 +93,6 @@ impl AssemblyScriptExecutor {
         let entrypoint = get_typed_function(&instance, &store, ENTRYPOINT_NAME)?;
 
         Ok((store, entrypoint, rx))
-    }
-}
-
-#[async_trait]
-impl Executor for AssemblyScriptExecutor {
-    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
-        let (mut store, entrypoint, incidents_rx) = self.prepare_vm(ctx)?;
-
-        tokio::task::spawn_blocking(move || {
-            let span = tracing::span!(Level::TRACE, "assembly_script:entrypoint");
-            let _guard = span.enter();
-
-            entrypoint.call(&mut store)
-        })
-        .await
-        .expect("BUG: AssemblyScriptExecutor entrypoint call is panicked.")
-        .map_err(DataError::WasmRuntime)?;
-
-        let incidents = incidents_rx.into_iter().collect();
-
-        Ok(incidents)
     }
 }
 
@@ -156,81 +157,6 @@ impl WasmEnv {
 
         Ok(*ptr)
     }
-}
-
-mod imports {
-    use super::{runtime_error_ctx, Incident, WasmEnv};
-    use crate::daemon::sql::SqlExecutor;
-    use as_ffi_bindings::StringPtr;
-    use tokio::runtime::Handle;
-    use tracing::error;
-    use wasmer::{imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports};
-
-    pub(crate) fn all(store: &mut impl AsStoreMut, env: &FunctionEnv<WasmEnv>) -> Imports {
-        imports! {
-            "env" => {
-                "abort" => Function::new_typed_with_env(store,  env, abort),
-            },
-            "mamoru" => {
-                "query" => Function::new_typed_with_env(store, env, mamoru_query),
-                "report" => Function::new_typed_with_env(store, env, mamoru_report),
-            }
-        }
-    }
-
-    pub(crate) fn abort(
-        ctx: FunctionEnvMut<WasmEnv>,
-        message: StringPtr,
-        filename: StringPtr,
-        line: u32,
-        col: u32,
-    ) -> Result<(), wasmer::RuntimeError> {
-        let env = ctx.data();
-        let message = env.read_string_ptr(&message, &ctx)?;
-        let filename = env.read_string_ptr(&filename, &ctx)?;
-
-        error!("Error: {} at {}:{} col: {}", message, filename, line, col);
-
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(ctx, query), level = "trace")]
-    pub(crate) fn mamoru_query(
-        mut ctx: FunctionEnvMut<WasmEnv>,
-        query: StringPtr,
-    ) -> Result<StringPtr, wasmer::RuntimeError> {
-        runtime_error_ctx(|| {
-            let env = ctx.data();
-            let query = env.read_string_ptr(&query, &ctx)?;
-            let sql_executor = SqlExecutor::new(&query)?;
-
-            let outputs = Handle::current()
-                .block_on(async move { sql_executor.query(&env.data_ctx).await })?;
-
-            let serialized = serde_json::to_string(&outputs)?;
-            let ptr = WasmEnv::alloc_string_ptr(env.bindings_env.clone(), serialized, &mut ctx)?;
-
-            Ok(ptr)
-        })
-    }
-
-    #[tracing::instrument(skip(ctx), level = "trace")]
-    pub(crate) fn mamoru_report(ctx: FunctionEnvMut<WasmEnv>) -> Result<(), wasmer::RuntimeError> {
-        let tx = &ctx.data().incidents_tx;
-
-        runtime_error_ctx(|| {
-            tx.try_send(Incident)?;
-
-            Ok(())
-        })
-    }
-}
-
-fn runtime_error_ctx<F, T>(fun: F) -> Result<T, wasmer::RuntimeError>
-where
-    F: FnOnce() -> Result<T, Box<dyn Error>>,
-{
-    fun().map_err(|err| wasmer::RuntimeError::new(err.to_string()))
 }
 
 fn get_memory(instance: &Instance, name: &str) -> Result<Memory, DataError> {

@@ -208,3 +208,70 @@ async fn smoke() {
     assert!(result.matched);
     assert_eq!(result.incidents.len(), 1);
 }
+
+#[test(tokio::test)]
+async fn http() {
+    const AS_CODE_BLOCK: &str = r#"""
+        import { JSON, JSONEncoder } from "assemblyscript-json/assembly";
+
+        @external("mamoru", "http")
+        declare function mamoru_http(request: string): string
+
+        @external("mamoru", "report")
+        declare function report(): void
+
+        function http_get(url: string): i64 {
+            let encoder = new JSONEncoder();
+            encoder.pushObject(null);
+            encoder.setString("method", "GET");
+            encoder.setString("url", url);
+            encoder.popObject();
+
+            let requestPayload: string = encoder.toString();
+
+            let query_result: string = mamoru_http(requestPayload);
+            let json: JSON.Obj = <JSON.Obj>(JSON.parse(query_result));
+
+            return json.getInteger("status")!.valueOf();
+        }
+
+        export function main(): void {
+           let response_code = http_get(ENDPOINT);
+
+           if (response_code == 418) {
+               report();
+           }
+        }
+    """#;
+
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("GET", "/teapot")
+        .with_status(418)
+        .create_async()
+        .await;
+
+    let endpoint = format!("{}{}", server.url(), "/teapot");
+
+    let module = AssemblyScriptModule::with_deps(
+        &format!(
+            "const ENDPOINT: string = \"{}\";\n{}",
+            endpoint, AS_CODE_BLOCK
+        ),
+        &["assemblyscript-json@1.1.0"],
+    );
+
+    let daemon = active_daemon(&module);
+    let ctx = data_ctx("DUMMY_HASH");
+
+    let result = daemon
+        .verify(&ctx)
+        .await
+        .expect("Failed to run Daemon::verify()");
+
+    assert!(result.matched);
+    assert_eq!(result.incidents.len(), 1);
+
+    // assert endpoint was called
+    mock.assert_async().await;
+}
