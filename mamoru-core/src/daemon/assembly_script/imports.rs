@@ -107,11 +107,11 @@ struct HttpResponse {
     status: u16,
     error: Option<String>,
     headers: HashMap<String, String>,
-    body: Option<String>,
+    body: Option<Vec<u8>>,
 }
 
-impl From<reqwest::Response> for HttpResponse {
-    fn from(value: reqwest::Response) -> Self {
+impl HttpResponse {
+    async fn from_reqwest(value: reqwest::Response) -> Self {
         Self {
             error: None,
             status: value.status().as_u16(),
@@ -131,7 +131,14 @@ impl From<reqwest::Response> for HttpResponse {
                     }
                 })
                 .collect(),
-            body: None,
+            body: match value.bytes().await {
+                Ok(body) => Some(body.to_vec()),
+                Err(err) => {
+                    error!(error = ?err, "Failed to read response body");
+
+                    None
+                }
+            },
         }
     }
 }
@@ -161,19 +168,19 @@ fn http(
             request_builder = request_builder.header(key, value);
         }
 
-        let response = Handle::current().block_on(async move { request_builder.send().await });
+        let response = Handle::current().block_on(async move {
+            match request_builder.send().await {
+                Ok(res) => HttpResponse::from_reqwest(res).await,
+                Err(err) => HttpResponse {
+                    error: Some(err.to_string()),
+                    status: 0,
+                    headers: Default::default(),
+                    body: None,
+                },
+            }
+        });
 
-        let http_response = match response {
-            Ok(res) => res.into(),
-            Err(err) => HttpResponse {
-                error: Some(err.to_string()),
-                status: 0,
-                headers: Default::default(),
-                body: None,
-            },
-        };
-
-        let serialized = serde_json::to_string(&http_response)?;
+        let serialized = serde_json::to_string(&response)?;
         let ptr = WasmEnv::alloc_string_ptr(env.bindings_env.clone(), serialized, &mut ctx)?;
 
         Ok(ptr)

@@ -4,6 +4,8 @@ use mamoru_core::test_blockchain_data::data_ctx;
 use mamoru_core::DataError;
 use test_log::test;
 
+const AS_SDK_PATH: &str = concat!("file:", env!("CARGO_MANIFEST_DIR"), "/../mamoru-sdk-as");
+
 #[test(tokio::test)]
 async fn main_function_missing_fails() {
     let ctx = data_ctx("DUMMY_HASH");
@@ -86,10 +88,9 @@ async fn main_function_valid_signature_empty_result() {
 async fn generates_many_incidents() {
     let ctx = data_ctx("DUMMY_HASH");
 
-    let module = AssemblyScriptModule::new(
+    let module = AssemblyScriptModule::with_deps(
         r#"""
-        @external("mamoru", "report")
-        declare function report(): void
+        import {report} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
             for (let i = 0; i < 10; i++) {
@@ -97,6 +98,7 @@ async fn generates_many_incidents() {
             }
         }
     """#,
+        &[AS_SDK_PATH],
     );
 
     let daemon = active_daemon(&module);
@@ -113,10 +115,9 @@ async fn generates_many_incidents() {
 async fn too_many_incident_generation_fails() {
     let ctx = data_ctx("DUMMY_HASH");
 
-    let module = AssemblyScriptModule::new(
+    let module = AssemblyScriptModule::with_deps(
         r#"""
-        @external("mamoru", "report")
-        declare function report(): void
+        import {report} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
             // assuming 1000 is too many
@@ -125,6 +126,7 @@ async fn too_many_incident_generation_fails() {
             }
         }
     """#,
+        &[AS_SDK_PATH],
     );
 
     let daemon = active_daemon(&module);
@@ -140,15 +142,15 @@ async fn too_many_incident_generation_fails() {
 async fn invalid_query_fails() {
     let ctx = data_ctx("DUMMY_HASH");
 
-    let module = AssemblyScriptModule::new(
+    let module = AssemblyScriptModule::with_deps(
         r#"""
-        @external("mamoru", "query")
-        declare function query(query: string): string
+        import {query} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
             query("Definitely not an SQL query =)");
         }
     """#,
+        &[AS_SDK_PATH],
     );
 
     let daemon = active_daemon(&module);
@@ -168,20 +170,7 @@ async fn smoke() {
     let ctx = data_ctx("DUMMY_HASH");
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import { JSON } from "assemblyscript-json/assembly";
-
-        @external("mamoru", "query")
-        declare function mamoru_query(query: string): string
-
-        @external("mamoru", "report")
-        declare function report(): void
-
-        function query(query: string): Array<JSON.Obj> {
-            let query_result: string = mamoru_query(query);
-            let json: JSON.Arr = <JSON.Arr>(JSON.parse(query_result));
-
-            return json.valueOf().map((value: JSON.Value) => value as JSON.Obj);
-        }
+        import {query, report} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
            let rows = query("SELECT t.gas_used FROM transactions t WHERE t.digest = 'DUMMY_HASH'");
@@ -195,7 +184,7 @@ async fn smoke() {
            });
         }
     """#,
-        &["assemblyscript-json@1.1.0"],
+        &[AS_SDK_PATH],
     );
 
     let daemon = active_daemon(&module);
@@ -212,33 +201,12 @@ async fn smoke() {
 #[test(tokio::test)]
 async fn http() {
     const AS_CODE_BLOCK: &str = r#"""
-        import { JSON, JSONEncoder } from "assemblyscript-json/assembly";
-
-        @external("mamoru", "http")
-        declare function mamoru_http(request: string): string
-
-        @external("mamoru", "report")
-        declare function report(): void
-
-        function http_get(url: string): i64 {
-            let encoder = new JSONEncoder();
-            encoder.pushObject(null);
-            encoder.setString("method", "GET");
-            encoder.setString("url", url);
-            encoder.popObject();
-
-            let requestPayload: string = encoder.toString();
-
-            let query_result: string = mamoru_http(requestPayload);
-            let json: JSON.Obj = <JSON.Obj>(JSON.parse(query_result));
-
-            return json.getInteger("status")!.valueOf();
-        }
+        import {http, HttpRequest, HttpMethod, report} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
-           let response_code = http_get(ENDPOINT);
+           let response = http(new HttpRequest(HttpMethod.GET, ENDPOINT));
 
-           if (response_code == 418) {
+           if (response.status() == 418) {
                report();
            }
         }
@@ -258,7 +226,7 @@ async fn http() {
             "const ENDPOINT: string = \"{}\";\n{}",
             endpoint, AS_CODE_BLOCK
         ),
-        &["assemblyscript-json@1.1.0"],
+        &[AS_SDK_PATH],
     );
 
     let daemon = active_daemon(&module);

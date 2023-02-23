@@ -38,6 +38,21 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
+  build-mamoru-sdk-as:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install NPM
+        uses: actions/setup-node@v3
+        with:
+          node-version: 19.x
+
+      - name: Build
+        run: |
+          npm ci
+          npm run asbuild:debug
+        working-directory: ./mamoru-sdk-as
+
   tests:
     runs-on: ubuntu-latest
     steps:
