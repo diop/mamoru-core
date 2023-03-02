@@ -1,16 +1,17 @@
 use crate::validation_chain_tests::{message_client, query_client, retry};
-use chrono::Utc;
 use futures::TryStreamExt;
 use mamoru_sniffer::validation_chain::{
-    BlockId, ChainType, IncidentReport, IncidentSource, TransactionId,
+    BlockId, ChainType, DaemonRelay, IncidentReport, IncidentSource, TransactionId,
 };
 use test_log::test;
+use uuid::Uuid;
 
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
     let client = message_client().await;
     let query = query_client().await;
+    let daemon_metadata_id = Uuid::new_v4().to_string();
 
     client
         .register_sniffer(ChainType::SuiDevnet)
@@ -19,10 +20,14 @@ async fn smoke() {
 
     client
         .register_daemon(
+            daemon_metadata_id,
             ChainType::SuiDevnet,
-            "SELECT * FROM transactions",
-            Utc::now(),
-            Utc::now(),
+            vec![],
+            DaemonRelay {
+                r#type: 0,
+                call: "call".to_string(),
+                address: "address".to_string(),
+            },
         )
         .await
         .expect("Register rule error.");

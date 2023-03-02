@@ -6,6 +6,7 @@ MAMORU_ENDPOINT ="http://localhost:9090"
 MAMORU_TEST_FAUCET_ENDPOINT = "http://localhost:4500"
 RUST_LOG="warn,mamoru_core=debug"
 
+# Initializes the project by installing the git submodules
 init:
 	git submodule update --init
 

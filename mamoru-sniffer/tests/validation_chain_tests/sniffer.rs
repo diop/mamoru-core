@@ -1,27 +1,35 @@
 use crate::validation_chain_tests::{message_client, query_client, retry, sniffer};
-use chrono::{Days, Utc};
 use futures::TryStreamExt;
 use mamoru_core::test_blockchain_data::data_ctx;
 use mamoru_sniffer::validation_chain::{
-    ChainType, DaemonQueryResponseDto, IncidentQueryResponseDto,
+    ChainType, DaemonParameter, DaemonQueryResponseDto, DaemonRelay, IncidentQueryResponseDto,
 };
+
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::future;
 use test_log::test;
+use uuid::Uuid;
 
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
+    let daemon_metadata_id = Uuid::new_v4().to_string();
     let chain = ChainType::SuiDevnet;
     let tx_hash = random_string();
 
-    let daemon_id = register_active_daemon(
+    let daemon_id = register_daemon(
+        daemon_metadata_id,
         chain,
-        format!(
-            "SELECT 1 FROM transactions t WHERE t.digest = '{}'",
-            &tx_hash
-        ),
+        vec![DaemonParameter {
+            key: "key".to_string(),
+            value: "value".to_string(),
+        }],
+        DaemonRelay {
+            r#type: 0,
+            call: "call".to_string(),
+            address: "address".to_string(),
+        },
     )
     .await;
 
@@ -55,17 +63,17 @@ async fn get_incidents(daemon_id: &str) -> Vec<IncidentQueryResponseDto> {
         .expect("List incidents error")
 }
 
-async fn register_active_daemon(chain: ChainType, query: impl Into<String>) -> String {
+async fn register_daemon(
+    daemon_metadata_id: String,
+    chain: ChainType,
+    parameters: Vec<DaemonParameter>,
+    relay: DaemonRelay,
+) -> String {
     let message_client = message_client().await;
     let old_daemons = daemons(chain).await;
 
     message_client
-        .register_daemon(
-            chain,
-            query,
-            Utc::now(),
-            Utc::now().checked_add_days(Days::new(1)).unwrap(),
-        )
+        .register_daemon(daemon_metadata_id, chain, parameters, relay)
         .await
         .expect("Register rule error");
 

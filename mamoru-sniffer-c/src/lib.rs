@@ -97,10 +97,8 @@ fn blockchain_data_ctx_builder_finish(
     let tx_id = tx_id.to_str().to_string();
     let tx_hash = tx_hash.to_str().to_string();
 
-    let now = chrono::NaiveDateTime::from_timestamp_opt(tx_timestamp_secs, 0).unwrap_or_default();
-
     repr_c::Box::new(FfiBlockchainDataCtx {
-        inner: builder.finish(tx_id, tx_hash, now),
+        inner: builder.finish(tx_id, tx_hash),
     })
 }
 

@@ -2,7 +2,6 @@ mod udf;
 pub mod value;
 
 use crate::DataError;
-use chrono::NaiveDateTime;
 use datafusion::arrow::datatypes::Schema;
 use datafusion::arrow::error::ArrowError;
 use datafusion::arrow::record_batch::RecordBatch;
@@ -57,7 +56,6 @@ impl BlockchainDataCtxBuilder {
             session,
             tx_id: "EMPTY_CTX".to_string(),
             tx_hash: "EMPTY_CTX".to_string(),
-            now: chrono::Utc::now().naive_utc(),
         })
     }
 
@@ -74,12 +72,11 @@ impl BlockchainDataCtxBuilder {
         Ok(())
     }
 
-    pub fn finish(self, tx_id: String, tx_hash: String, now: NaiveDateTime) -> BlockchainDataCtx {
+    pub fn finish(self, tx_id: String, tx_hash: String) -> BlockchainDataCtx {
         BlockchainDataCtx {
             session: self.session,
             tx_id,
             tx_hash,
-            now,
         }
     }
 }
@@ -90,7 +87,6 @@ pub struct BlockchainDataCtx {
     session: SessionContext,
     tx_id: String,
     tx_hash: String,
-    now: NaiveDateTime,
 }
 
 impl BlockchainDataCtx {
@@ -100,10 +96,6 @@ impl BlockchainDataCtx {
 
     pub fn tx_hash(&self) -> &str {
         &self.tx_hash
-    }
-
-    pub(crate) fn time(&self) -> NaiveDateTime {
-        self.now
     }
 
     pub(crate) fn session(&self) -> &SessionContext {

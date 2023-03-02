@@ -1,6 +1,6 @@
 static SERVICES: &[&str] = &[
-    "./proto/validation-chain/proto/validationchain/tx.proto",
-    "./proto/validation-chain/proto/validationchain/query.proto",
+    "./proto/validation-chain/proto/validationchain/validationchain/tx.proto",
+    "./proto/validation-chain/proto/validationchain/validationchain/query.proto",
 ];
 
 static INCLUDES: &[&str] = &["./proto/validation-chain/proto/", "./proto/"];

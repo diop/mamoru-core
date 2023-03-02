@@ -86,7 +86,7 @@ pub(crate) fn active_daemon(module: &AssemblyScriptModule) -> Daemon {
 }
 
 pub(crate) fn try_active_daemon(module: &AssemblyScriptModule) -> Result<Daemon, DataError> {
-    Daemon::new_assembly_script("dummy".to_string(), 0, i64::MAX, module.bytes())
+    Daemon::new_assembly_script("dummy".to_string(), module.bytes())
 }
 
 fn run_cmd<I, S>(path: &Path, cmd: I)

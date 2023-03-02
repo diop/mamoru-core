@@ -9,10 +9,5 @@ pub fn active_daemon(expression: impl AsRef<str>) -> Daemon {
 }
 
 pub fn try_active_daemon(expression: impl AsRef<str>) -> Result<Daemon, DataError> {
-    Daemon::new_sql("dummy".to_string(), 0, i64::MAX, expression.as_ref())
-}
-
-pub fn inactive_daemon(expression: impl AsRef<str>) -> Daemon {
-    Daemon::new_sql("dummy".to_string(), 0, 0, expression.as_ref())
-        .expect("Failed to create daemon.")
+    Daemon::new_sql("dummy".to_string(), expression.as_ref())
 }

@@ -70,7 +70,7 @@ pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainDataCtx {
         )
         .unwrap();
 
-    builder.finish(format!("{}", tx_seq), digest, now)
+    builder.finish(format!("{}", tx_seq), digest)
 }
 
 #[derive(BlockchainData)]

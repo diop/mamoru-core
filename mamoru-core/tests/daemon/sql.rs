@@ -1,4 +1,4 @@
-use crate::daemon::{active_daemon, inactive_daemon, try_active_daemon};
+use crate::daemon::{active_daemon, try_active_daemon};
 use mamoru_core::test_blockchain_data::data_ctx;
 use mamoru_core::DataError;
 use test_log::test;
@@ -11,19 +11,6 @@ async fn simple_query_matches() -> Result<(), DataError> {
     let data = rule.verify(&ctx).await?;
 
     assert!(data.matched);
-
-    Ok(())
-}
-
-#[test(tokio::test)]
-async fn inactive_rule_doesnt_match() -> Result<(), DataError> {
-    let ctx = data_ctx("DUMMY_HASH");
-    let rule = inactive_daemon("SELECT t.seq FROM transactions t WHERE t.hash = 'DUMMY_HASH'");
-
-    let data = rule.verify(&ctx).await?;
-
-    assert!(!data.matched);
-    assert!(data.incidents.is_empty());
 
     Ok(())
 }

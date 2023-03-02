@@ -1,7 +1,7 @@
 pub use crate::validation_chain::proto::cosmos::base::query::v1beta1::PageRequest;
 pub use crate::validation_chain::proto::validation_chain::{
-    DaemonQueryResponseDto, IncidentQueryResponseDto, QueryListDaemonsResponse,
-    SnifferQueryResponseDto,
+    DaemonMetadata, DaemonParameter, DaemonQueryResponseDto, DaemonRelay, IncidentQueryResponseDto,
+    QueryListDaemonsResponse, SnifferQueryResponseDto,
 };
 pub use crate::validation_chain::ChainType;
 

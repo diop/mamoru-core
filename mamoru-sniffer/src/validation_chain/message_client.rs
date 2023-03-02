@@ -16,7 +16,6 @@ use crate::validation_chain::proto::validation_chain::{
     SnifferUnregisterCommandRequestDto, Source,
 };
 use crate::validation_chain::ClientResult;
-use chrono::Utc;
 use cosmrs::proto::traits::TypeUrl;
 use cosmrs::tx::{
     AccountNumber, Body, BodyBuilder, Fee, MessageExt, SequenceNumber, SignDoc, SignerInfo,
@@ -27,6 +26,8 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tracing::error;
+
+use super::proto::validation_chain::{DaemonParameter, DaemonRelay};
 
 const MAX_RETRIES: usize = 5;
 const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
@@ -106,14 +107,15 @@ impl MessageClient {
 
     pub async fn register_sniffer(&self, chain: ChainType) -> ClientResult<()> {
         let sniffer = self.config.address().to_string();
+        let chain_vec = vec![Chain {
+            chain_type: chain.into(),
+        }];
 
         self.sign_and_broadcast_txs(vec![MsgRegisterSniffer {
             creator: sniffer.clone(),
             sniffer: Some(SnifferRegisterCommandRequestDto {
                 sniffer,
-                chain: Some(Chain {
-                    chain_type: chain.into(),
-                }),
+                chains: chain_vec,
             }),
         }])
         .await?;
@@ -174,6 +176,12 @@ impl MessageClient {
                         }),
                         block,
                         tx,
+                        // @TODO: Fill this fields from SQL
+                        severity: Default::default(),
+                        message: Default::default(),
+                        address: Default::default(),
+                        data: Default::default(),
+                        chain: Default::default(),
                     }),
                 }
             })
@@ -186,10 +194,10 @@ impl MessageClient {
 
     pub async fn register_daemon(
         &self,
+        daemon_metadata_id: String,
         chain: ChainType,
-        content: impl Into<String>,
-        activate_since: chrono::DateTime<Utc>,
-        inactivate_since: chrono::DateTime<Utc>,
+        parameters: Vec<DaemonParameter>,
+        relay: DaemonRelay,
     ) -> ClientResult<()> {
         let sniffer = self.config.address().to_string();
 
@@ -199,10 +207,9 @@ impl MessageClient {
                 chain: Some(Chain {
                     chain_type: chain.into(),
                 }),
-                ipfs_cid: "unknown".to_string(),
-                content: content.into(),
-                activate_since: activate_since.to_rfc3339(),
-                inactivate_since: inactivate_since.to_rfc3339(),
+                daemon_metadata_id: daemon_metadata_id,
+                parameters,
+                relay: Some(relay),
             }),
         }])
         .await?;
@@ -288,7 +295,7 @@ impl MessageClient {
                 tx_bytes: tx_raw
                     .to_bytes()
                     .map_err(ValidationClientError::TransactionToBytes)?,
-                mode: BroadcastMode::Sync.into(),
+                mode: BroadcastMode::Block.into(),
             })
             .await?
             .into_inner();

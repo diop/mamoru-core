@@ -31,46 +31,24 @@ pub trait Executor: Send + Sync + Debug {
 #[derive(Debug)]
 pub struct Daemon {
     id: String,
-    activate_since: i64,
-    inactivate_since: i64,
     executor: Box<dyn Executor>,
 }
 
 impl Daemon {
-    pub fn new_sql(
-        id: String,
-        activate_since: i64,
-        inactivate_since: i64,
-        expression: &str,
-    ) -> Result<Self, DataError> {
+    pub fn new_sql(id: String, expression: &str) -> Result<Self, DataError> {
         let executor = Box::new(SqlExecutor::new(expression)?);
 
-        Ok(Self::new(id, activate_since, inactivate_since, executor))
+        Ok(Self::new(id, executor))
     }
 
-    pub fn new_assembly_script(
-        id: String,
-        activate_since: i64,
-        inactivate_since: i64,
-        wasm: impl AsRef<[u8]>,
-    ) -> Result<Self, DataError> {
+    pub fn new_assembly_script(id: String, wasm: impl AsRef<[u8]>) -> Result<Self, DataError> {
         let executor = Box::new(AssemblyScriptExecutor::new(wasm)?);
 
-        Ok(Self::new(id, activate_since, inactivate_since, executor))
+        Ok(Self::new(id, executor))
     }
 
-    pub fn new(
-        id: String,
-        activate_since: i64,
-        inactivate_since: i64,
-        executor: Box<dyn Executor>,
-    ) -> Self {
-        Self {
-            id,
-            activate_since,
-            inactivate_since,
-            executor,
-        }
+    pub fn new(id: String, executor: Box<dyn Executor>) -> Self {
+        Self { id, executor }
     }
 
     pub fn id(&self) -> String {
@@ -80,91 +58,11 @@ impl Daemon {
     /// Executes the given daemon.
     #[tracing::instrument(skip(ctx, self), fields(daemon_id = self.id(), tx_hash = ctx.tx_hash(), level = "trace"))]
     pub async fn verify(&self, ctx: &BlockchainDataCtx) -> Result<VerifyCtx, DataError> {
-        if !self.is_active(ctx.time().timestamp()) {
-            return Ok(VerifyCtx {
-                matched: false,
-                incidents: vec![],
-            });
-        }
-
         let incidents = self.executor.execute(ctx).await?;
 
         Ok(VerifyCtx {
             matched: !incidents.is_empty(),
             incidents,
         })
-    }
-
-    /// `inactivate_since` has more priority
-    pub fn is_active(&self, time: i64) -> bool {
-        let inactive = time >= self.inactivate_since;
-        let active = time >= self.activate_since;
-
-        if inactive {
-            false
-        } else {
-            active
-        }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn not_yet_active_daemon_does_not_match() {
-        let daemon = daemon(ACTIVE_SINCE, INACTIVE_SINCE);
-        let is_active = daemon.is_active(ACTIVE_SINCE - 1);
-
-        assert!(!is_active);
-    }
-
-    #[test]
-    fn already_inactive_daemon_does_not_match() {
-        let daemon = daemon(ACTIVE_SINCE, INACTIVE_SINCE);
-        let is_active = daemon.is_active(INACTIVE_SINCE);
-
-        assert!(!is_active);
-    }
-
-    #[test]
-    fn inactive_has_higher_priority() {
-        // `inactive_since = 0` makes the rule always inactive,
-        // regardless the `active_since` value
-        let daemon = daemon(1, 0);
-        let is_active = daemon.is_active(2);
-
-        assert!(!is_active);
-    }
-
-    #[test]
-    fn active_daemon_does_match() {
-        let daemon = daemon(ACTIVE_SINCE, INACTIVE_SINCE);
-        let is_active = daemon.is_active(ACTIVE_SINCE);
-
-        assert!(is_active);
-    }
-
-    const ACTIVE_SINCE: i64 = 10;
-    const INACTIVE_SINCE: i64 = ACTIVE_SINCE + 10;
-
-    #[derive(Debug)]
-    struct TestExecutor;
-
-    #[async_trait]
-    impl Executor for TestExecutor {
-        async fn execute(&self, _ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
-            Ok(vec![Incident])
-        }
-    }
-
-    fn daemon(active_since: i64, inactive_since: i64) -> Daemon {
-        Daemon::new(
-            "test".to_string(),
-            active_since,
-            inactive_since,
-            Box::new(TestExecutor),
-        )
     }
 }
