@@ -22,7 +22,7 @@ jobs:
       - name: Run linting
         run: |
           cargo fmt -- --check
-          cargo clippy --workspace --all-features --tests
+          cargo clippy --workspace --all-features --tests -- -D warnings
 
   build:
     runs-on: ubuntu-latest

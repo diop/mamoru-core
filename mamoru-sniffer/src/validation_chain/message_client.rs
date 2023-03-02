@@ -207,7 +207,7 @@ impl MessageClient {
                 chain: Some(Chain {
                     chain_type: chain.into(),
                 }),
-                daemon_metadata_id: daemon_metadata_id,
+                daemon_metadata_id,
                 parameters,
                 relay: Some(relay),
             }),
