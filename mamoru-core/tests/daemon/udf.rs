@@ -1,5 +1,5 @@
 use crate::daemon::active_daemon;
-use mamoru_core::test_blockchain_data::data_ctx;
+use mamoru_core::test_blockchain_data::{data_ctx, TEST_ETH_TOPIC};
 use mamoru_core::DataError;
 use test_log::test;
 
@@ -52,6 +52,21 @@ async fn wrong_struct_field_does_not_fail() -> Result<(), DataError> {
     let data = rule.verify(&ctx).await?;
 
     assert!(!data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn bytes_to_hex() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = active_daemon(format!(
+        "SELECT 1 FROM transactions t WHERE bytes_to_hex(t.eth_topic) = '0x{}'",
+        TEST_ETH_TOPIC
+    ));
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
 
     Ok(())
 }

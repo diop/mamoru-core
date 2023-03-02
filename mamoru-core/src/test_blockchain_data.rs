@@ -4,6 +4,8 @@ use blockchain_data_macro::BlockchainData;
 use datafusion::arrow::datatypes::{DataType, TimeUnit};
 use maplit::hashmap;
 
+pub const TEST_ETH_TOPIC: &str = "442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e";
+
 pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainDataCtx {
     let (tx_seq, digest) = (42, tx_hash.into());
     let now = chrono::Utc::now().naive_utc();
@@ -15,6 +17,7 @@ pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainDataCtx {
             TestTransactionBatch::new(vec![TestTransaction {
                 seq: tx_seq,
                 time: now.timestamp(),
+                eth_topic: hex::decode(TEST_ETH_TOPIC).unwrap(),
                 digest: digest.clone(),
                 gas_used: 42_000,
             }])
@@ -81,6 +84,9 @@ pub struct TestTransaction {
 
     #[schema(type = "DataType::Utf8")]
     pub digest: String,
+
+    #[schema(type = "DataType::Binary")]
+    pub eth_topic: Vec<u8>,
 
     #[schema(type = "DataType::Timestamp(TimeUnit::Second, None)")]
     pub time: i64,

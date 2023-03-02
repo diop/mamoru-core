@@ -98,3 +98,25 @@ pub(crate) fn struct_field() -> ScalarUDF {
         fun,
     )
 }
+
+pub(crate) fn bytes_to_hex() -> ScalarUDF {
+    let fun = make_scalar_function(|args: &[ArrayRef]| {
+        let values =
+            as_binary_array(&args[0]).expect("BUG: Failed to cast DataFusion value in UDF");
+
+        let results = values
+            .iter()
+            .map(|value| value.map(|value| format!("0x{}", hex::encode(value))))
+            .collect::<StringArray>();
+
+        Ok(Arc::new(results) as ArrayRef)
+    });
+
+    create_udf(
+        "bytes_to_hex",
+        vec![DataType::Binary],
+        Arc::new(DataType::Utf8),
+        Volatility::Immutable,
+        fun,
+    )
+}

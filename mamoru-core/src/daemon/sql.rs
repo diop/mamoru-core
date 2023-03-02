@@ -4,22 +4,20 @@ use async_trait::async_trait;
 use datafusion::arrow::json::writer::record_batches_to_json_rows;
 use datafusion::dataframe::DataFrame;
 use datafusion::sql::parser::{DFParser, Statement};
-use datafusion::sql::planner::SqlToRel;
 use datafusion::sql::sqlparser;
 use serde_json::{Map, Value};
-use std::collections::HashMap;
 
 pub(crate) type VerifyCtxOutputs = Vec<Map<String, Value>>;
 
 /// Executes SQL queries.
 #[derive(Debug)]
 pub struct SqlExecutor {
-    query: sqlparser::ast::Query,
+    query: Statement,
 }
 
 impl SqlExecutor {
     pub fn new(expression: &str) -> Result<Self, DataError> {
-        let query = Self::extract_query(expression)?;
+        let query = Self::make_statement(expression)?;
 
         Ok(Self { query })
     }
@@ -30,14 +28,14 @@ impl SqlExecutor {
         &self,
         ctx: &BlockchainDataCtx,
     ) -> Result<VerifyCtxOutputs, DataError> {
-        let state = ctx.session().state.clone();
-        let provider = state.read().clone();
+        let state = ctx.session().state();
 
-        let plan = SqlToRel::new(&provider)
-            .query_to_plan(self.query.clone(), &mut HashMap::new())
+        let plan = state
+            .statement_to_plan(self.query.clone())
+            .await
             .map_err(DataError::PlanQuery)?;
 
-        let data = DataFrame::new(state, &plan)
+        let data = DataFrame::new(state, plan)
             .collect()
             .await
             .map_err(DataError::ExecuteQuery)?;
@@ -49,7 +47,7 @@ impl SqlExecutor {
 
     /// Extracts query statements only, as we don't want
     /// someone to call INSERT/UPDATE/CREATE TABLE etc., in the virtual db.
-    fn extract_query(expression: &str) -> Result<sqlparser::ast::Query, DataError> {
+    fn make_statement(expression: &str) -> Result<Statement, DataError> {
         let mut statements = DFParser::parse_sql(expression).map_err(DataError::ParseSql)?;
 
         if statements.len() != 1 {
@@ -60,18 +58,18 @@ impl SqlExecutor {
             .pop_front()
             .expect("A single statement exists, as checked before.");
 
-        // A workaround to extract an item from [`Box`]
-        let extract_query = |statement: sqlparser::ast::Statement| match statement {
-            sqlparser::ast::Statement::Query(query) => Some(*query),
-            _ => None,
+        let is_query = match &statement {
+            Statement::Statement(boxed_statement) => {
+                matches!(**boxed_statement, sqlparser::ast::Statement::Query(_))
+            }
+            _ => false,
         };
 
-        let query = match statement {
-            Statement::Statement(sql_statement) => extract_query(*sql_statement),
-            _ => None,
-        };
-
-        query.ok_or(DataError::UnsupportedStatement)
+        if is_query {
+            Ok(statement)
+        } else {
+            Err(DataError::UnsupportedStatement)
+        }
     }
 }
 

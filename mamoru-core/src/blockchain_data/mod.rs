@@ -104,12 +104,13 @@ impl BlockchainDataCtx {
 }
 
 fn setup_session() -> SessionContext {
-    let mut session = SessionContext::new();
+    let session = SessionContext::new();
 
     session.register_udf(udf::as_boolean());
     session.register_udf(udf::as_uint64());
     session.register_udf(udf::as_string());
     session.register_udf(udf::struct_field());
+    session.register_udf(udf::bytes_to_hex());
 
     session
 }

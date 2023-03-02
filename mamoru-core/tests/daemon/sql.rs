@@ -24,7 +24,7 @@ async fn cte_expressions_are_supported() -> Result<(), DataError> {
             SELECT * FROM call_traces ct WHERE ct.function = 'func1'
         )
 
-        SELECT * FROM transactions t
+        SELECT t.digest FROM transactions t
             INNER JOIN func1_traces ct ON ct.seq IS NOT NULL
     "#,
     );

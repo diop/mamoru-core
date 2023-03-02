@@ -16,6 +16,6 @@ members = [
 # Use custom `cosmrs` due to breaking dependency with `sui` integration.
 # See https://github.com/Mamoru-Foundation/cosmos-rust/commit/61b33b3ec70200c823a8d1ab2f38868dc67469fd
 cosmrs = { git = "https://github.com/Mamoru-Foundation/cosmos-rust.git", rev = "8c971b29" }
-datafusion = { version = "15.0.0", default-features = false, features = ["crypto_expressions", "unicode_expressions"] }
+datafusion = { version = "19.0.0", default-features = false, features = ["crypto_expressions", "unicode_expressions"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
-tokio = { version = "1.21", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

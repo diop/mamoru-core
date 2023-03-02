@@ -131,26 +131,3 @@ jobs:
         run: cargo install cargo-llvm-cov --quiet
       - name: Generate code coverage
         run: cargo llvm-cov
-
-  slack-notify:
-    runs-on: ubuntu-latest
-    if: ${{ !cancelled() }}
-    needs:
-      - linting
-      - build
-      - tests
-      - validation-chain-tests
-    steps:
-      - uses: slackapi/slack-github-action@v1.22.0
-        with:
-          payload: |
-            {
-                "branch": "${{ github.ref_name }}",
-                "linting": "${{ needs.linting.result == 'success' && '✅' || '❌' }}",
-                "build": "${{ needs.build.result == 'success' && '✅' || '❌' }}",
-                "tests": "${{ needs.tests.result == 'success' && '✅' || '❌' }}",
-                "validation-chain-tests": "${{ needs.validation-chain-tests.result == 'success' && '✅' || '❌' }}",
-                "run_link": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
