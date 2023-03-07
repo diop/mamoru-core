@@ -1,4 +1,6 @@
-use crate::daemon::assembly_script::{active_daemon, AssemblyScriptModule};
+use crate::daemon::assembly_script::{
+    test_daemon, test_daemon_with_parameters, AssemblyScriptModule,
+};
 use expect_test::expect;
 use mamoru_core::test_blockchain_data::data_ctx;
 use mamoru_core::DataError;
@@ -18,7 +20,7 @@ async fn main_function_missing_fails() {
     """#,
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
     let result = daemon.verify(&ctx).await;
 
     expect![[r#"
@@ -46,7 +48,7 @@ async fn main_function_wrong_signature_fails() {
     """#,
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
     let result = daemon.verify(&ctx).await;
 
     expect![[r#"
@@ -70,7 +72,7 @@ async fn main_function_valid_signature_empty_result() {
     """#,
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
     let result = daemon.verify(&ctx).await;
 
     expect![[r#"
@@ -101,7 +103,7 @@ async fn generates_many_incidents() {
         &[AS_SDK_PATH],
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
     let result = daemon
         .verify(&ctx)
         .await
@@ -129,7 +131,7 @@ async fn too_many_incident_generation_fails() {
         &[AS_SDK_PATH],
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
 
     if let Err(DataError::WasmRuntime(err)) = daemon.verify(&ctx).await {
         expect!["sending on a full channel"].assert_eq(&err.message());
@@ -153,7 +155,7 @@ async fn invalid_query_fails() {
         &[AS_SDK_PATH],
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
 
     if let Err(DataError::WasmRuntime(err)) = daemon.verify(&ctx).await {
         expect![
@@ -187,7 +189,7 @@ async fn smoke() {
         &[AS_SDK_PATH],
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
 
     let result = daemon
         .verify(&ctx)
@@ -229,7 +231,7 @@ async fn http() {
         &[AS_SDK_PATH],
     );
 
-    let daemon = active_daemon(&module);
+    let daemon = test_daemon(&module);
     let ctx = data_ctx("DUMMY_HASH");
 
     let result = daemon
@@ -242,4 +244,47 @@ async fn http() {
 
     // assert endpoint was called
     mock.assert_async().await;
+}
+
+#[test(tokio::test)]
+async fn parameter() {
+    let ctx = data_ctx("DUMMY_HASH");
+    let module = AssemblyScriptModule::with_deps(
+        r#"""
+        import {parameter, report} from "@mamoru-ai/mamoru-sdk-as/assembly";
+
+        export function main(): void {
+           let boolParam = parameter("bool");
+           let boolValid = boolParam.asBoolean() == true && isNaN(boolParam.asNumber());
+
+           let numberParam = parameter("number");
+           let numberValid = Math.round(numberParam.asNumber()) == 42 && numberParam.asBoolean() == false;
+
+           let stringParam = parameter("string");
+           let stringValid = stringParam.asString() == "hello";
+
+           if (boolValid && numberValid && stringValid) {
+               report()
+           }
+        }
+    """#,
+        &[AS_SDK_PATH],
+    );
+
+    let daemon = test_daemon_with_parameters(
+        &module,
+        maplit::hashmap! {
+            "bool".to_string() => "true".to_string(),
+            "number".to_string() => "42.01".to_string(),
+            "string".to_string() => "hello".to_string(),
+        },
+    );
+
+    let result = daemon
+        .verify(&ctx)
+        .await
+        .expect("Failed to run Daemon::verify()");
+
+    assert!(result.matched);
+    assert_eq!(result.incidents.len(), 1);
 }

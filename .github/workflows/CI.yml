@@ -111,10 +111,9 @@ jobs:
       - uses: ./.github/actions/install-deps
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      # IGNORE IT FOR NOW. 
-      # - name: Run tests
-      #   run: |
-      #     make validation-chain-test
+      - name: Run tests
+        run: |
+          make validation-chain-test
 
   test-coverage:
     runs-on: ubuntu-latest

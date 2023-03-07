@@ -1,6 +1,5 @@
 use cosmrs::proto::cosmos::base::abci::v1beta1::TxResponse;
 use cosmrs::{tendermint, ErrorReport};
-use mamoru_core::DataError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -8,20 +7,8 @@ pub enum SnifferError {
     #[error(transparent)]
     Client(#[from] ValidationClientError),
 
-    #[error("Failed to parse Daemon")]
-    DaemonParse(#[from] DaemonParseError),
-
     #[error("Failed to parse Config")]
     Config(#[from] envy::Error),
-}
-
-#[derive(Error, Debug)]
-pub enum DaemonParseError {
-    #[error("Invalid DateTime format")]
-    DateTime(#[source] chrono::ParseError),
-
-    #[error(transparent)]
-    DataError(#[from] DataError),
 }
 
 #[derive(Error, Debug)]

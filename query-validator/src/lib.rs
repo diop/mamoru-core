@@ -1,7 +1,9 @@
 mod error;
 pub use error::*;
 
-use mamoru_core::{BlockchainDataCtx, BlockchainDataCtxBuilder, Daemon, DataError};
+use mamoru_core::{
+    BlockchainDataCtx, BlockchainDataCtxBuilder, Daemon, DaemonParameters, DataError,
+};
 
 /// Represents possible blockchains as each one has different schema
 #[derive(Debug)]
@@ -41,7 +43,7 @@ fn sql_validation_daemon(query: &str) -> Result<Daemon, DataError> {
 }
 
 fn assembly_script_validation_daemon(bytes: &[u8]) -> Result<Daemon, DataError> {
-    Daemon::new_assembly_script("WASM_VALIDATE".to_string(), bytes)
+    Daemon::new_assembly_script("WASM_VALIDATE".to_string(), bytes, DaemonParameters::new())
 }
 
 fn ctx(chain: ChainType) -> BlockchainDataCtx {

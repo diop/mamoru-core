@@ -91,7 +91,6 @@ fn blockchain_data_ctx_builder_finish(
     builder: repr_c::Box<FfiBlockchainDataCtxBuilder>,
     tx_id: char_p::Ref<'_>,
     tx_hash: char_p::Ref<'_>,
-    _tx_timestamp_secs: i64,
 ) -> repr_c::Box<FfiBlockchainDataCtx> {
     let builder = builder.into().inner;
     let tx_id = tx_id.to_str().to_string();

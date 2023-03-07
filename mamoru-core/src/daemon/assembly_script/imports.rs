@@ -20,6 +20,7 @@ pub(crate) fn all(store: &mut impl AsStoreMut, env: &FunctionEnv<WasmEnv>) -> Im
             "query" => Function::new_typed_with_env(store, env, query),
             "report" => Function::new_typed_with_env(store, env, report),
             "http" => Function::new_typed_with_env(store, env, http),
+            "parameter" => Function::new_typed_with_env(store, env, parameter),
         }
     }
 }
@@ -69,6 +70,23 @@ fn report(ctx: FunctionEnvMut<WasmEnv>) -> Result<(), wasmer::RuntimeError> {
 
         Ok(())
     })
+}
+
+#[tracing::instrument(skip_all, level = "trace")]
+fn parameter(
+    mut ctx: FunctionEnvMut<WasmEnv>,
+    key: StringPtr,
+) -> Result<StringPtr, wasmer::RuntimeError> {
+    let env = ctx.data();
+    let key = env.read_string_ptr(&key, &ctx)?;
+
+    let value = env.parameters.get(&key).cloned().ok_or_else(|| {
+        wasmer::RuntimeError::new(format!("No parameter found with key \"{}\"", key))
+    })?;
+
+    let value_ptr = WasmEnv::alloc_string_ptr(env.bindings_env.clone(), value, &mut ctx)?;
+
+    Ok(value_ptr)
 }
 
 #[derive(Deserialize)]

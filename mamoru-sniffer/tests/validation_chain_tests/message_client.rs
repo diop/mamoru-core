@@ -1,54 +1,47 @@
-use crate::validation_chain_tests::{message_client, query_client, retry};
-use futures::TryStreamExt;
+use crate::validation_chain_tests::message_client;
 use mamoru_sniffer::validation_chain::{
-    BlockId, ChainType, DaemonRelay, IncidentReport, IncidentSource, TransactionId,
+    BlockId, ChainType, DaemonMetadataContent, DaemonMetadataContentQuery, DaemonMetadataType,
+    IncidentReport, IncidentSeverity, IncidentSource, RegisterDaemonMetadataRequest, TransactionId,
 };
 use test_log::test;
-use uuid::Uuid;
 
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
     let client = message_client().await;
-    let query = query_client().await;
-    let daemon_metadata_id = Uuid::new_v4().to_string();
 
     client
         .register_sniffer(ChainType::SuiDevnet)
         .await
         .expect("Register sniffer error");
 
-    client
+    let daemon_metadata_response = client
+        .register_daemon_metadata(RegisterDaemonMetadataRequest {
+            kind: DaemonMetadataType::Sole,
+            supported_chains: vec![ChainType::SuiDevnet],
+            content: DaemonMetadataContent::Sql {
+                queries: vec![DaemonMetadataContentQuery {
+                    query: "SELECT 1 FROM transactions".to_string(),
+                    incident_message: "hello".to_string(),
+                    severity: IncidentSeverity::SeverityAlert,
+                }],
+            },
+            ..Default::default()
+        })
+        .await
+        .expect("Register daemon metadata error");
+
+    let register_daemon_response = client
         .register_daemon(
-            daemon_metadata_id,
+            daemon_metadata_response.daemon_metadata_id,
             ChainType::SuiDevnet,
             vec![],
-            DaemonRelay {
-                r#type: 0,
-                call: "call".to_string(),
-                address: "address".to_string(),
-            },
+            None,
         )
         .await
-        .expect("Register rule error.");
+        .expect("Register daemon error.");
 
-    let daemon_ids: Vec<_> = retry(|| async {
-        let daemons = query
-            .list_daemons(ChainType::SuiDevnet)
-            .try_collect::<Vec<_>>()
-            .await
-            .expect("List rules error");
-
-        let daemon_ids: Vec<_> = daemons.into_iter().map(|d| d.daemon_id).collect();
-
-        if !daemon_ids.is_empty() {
-            Ok(daemon_ids)
-        } else {
-            Err("Daemons list is empty".to_string())
-        }
-    })
-    .await
-    .expect("Failed to query daemons.");
+    let daemon_ids = vec![register_daemon_response.daemon_id];
 
     client
         .subscribe_daemons(daemon_ids.clone())

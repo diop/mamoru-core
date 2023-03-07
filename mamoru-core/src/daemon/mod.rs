@@ -5,6 +5,7 @@ use crate::daemon::assembly_script::AssemblyScriptExecutor;
 use crate::daemon::sql::SqlExecutor;
 use crate::{BlockchainDataCtx, DataError};
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
@@ -19,6 +20,9 @@ pub struct VerifyCtx {
 /// The incident found by a Daemon.
 #[derive(Debug, Clone)]
 pub struct Incident;
+
+/// The parameters that are passed to Daemon.
+pub type DaemonParameters = HashMap<String, String>;
 
 /// An entity that can search Incidents in the [`BlockchainDataCtx`].
 #[async_trait]
@@ -41,8 +45,12 @@ impl Daemon {
         Ok(Self::new(id, executor))
     }
 
-    pub fn new_assembly_script(id: String, wasm: impl AsRef<[u8]>) -> Result<Self, DataError> {
-        let executor = Box::new(AssemblyScriptExecutor::new(wasm)?);
+    pub fn new_assembly_script(
+        id: String,
+        wasm: impl AsRef<[u8]>,
+        parameters: DaemonParameters,
+    ) -> Result<Self, DataError> {
+        let executor = Box::new(AssemblyScriptExecutor::new(wasm, parameters)?);
 
         Ok(Self::new(id, executor))
     }

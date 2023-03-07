@@ -1,6 +1,6 @@
 mod tests;
 
-use mamoru_core::{Daemon, DataError};
+use mamoru_core::{Daemon, DaemonParameters, DataError};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
@@ -81,12 +81,22 @@ impl AssemblyScriptModule {
     }
 }
 
-pub(crate) fn active_daemon(module: &AssemblyScriptModule) -> Daemon {
-    try_active_daemon(module).expect("Failed to create daemon.")
+pub(crate) fn test_daemon(module: &AssemblyScriptModule) -> Daemon {
+    try_test_daemon(module, DaemonParameters::new()).expect("Failed to create daemon.")
 }
 
-pub(crate) fn try_active_daemon(module: &AssemblyScriptModule) -> Result<Daemon, DataError> {
-    Daemon::new_assembly_script("dummy".to_string(), module.bytes())
+pub(crate) fn test_daemon_with_parameters(
+    module: &AssemblyScriptModule,
+    parameters: DaemonParameters,
+) -> Daemon {
+    try_test_daemon(module, parameters).expect("Failed to create daemon.")
+}
+
+pub(crate) fn try_test_daemon(
+    module: &AssemblyScriptModule,
+    parameters: DaemonParameters,
+) -> Result<Daemon, DataError> {
+    Daemon::new_assembly_script("dummy".to_string(), module.bytes(), parameters)
 }
 
 fn run_cmd<I, S>(path: &Path, cmd: I)

@@ -253,17 +253,10 @@ impl SnifferBgTask {
 
         let new_daemons: Vec<Daemon> = daemon_response
             .into_iter()
-            .filter_map(|daemon| {
-                let daemon_id = daemon.daemon_id.clone();
+            .flat_map(|daemon_response_dto| {
+                let daemons: Vec<Daemon> = daemon_response_dto.into();
 
-                match daemon.try_into() {
-                    Ok(rule) => Some(rule),
-                    Err(err) => {
-                        error!(?err, %daemon_id, "Failed to parse daemon, skipping...");
-
-                        None
-                    }
-                }
+                daemons
             })
             .collect();
 

@@ -6,6 +6,7 @@ import {
     _mamoru_query,
     _mamoru_report,
     _mamoru_http,
+    _mamoru_parameter,
 } from "./imports";
 
 // Performs HTTP request to a remote host
@@ -29,6 +30,41 @@ export function query(query: string): Array<JSON.Obj> {
 // Reports an incident.
 export function report(): void {
     _mamoru_report()
+}
+
+// Returns a `key` parameter defined for the daemon.
+// The return value is `DaemonParameter` object from which
+// you can receive a specific type:
+// ```
+// let param = parameter("foo");
+// let maybe_bool = param.asBoolean();
+// let maybe_number = param.asNumber();
+// let str = param.asString();
+// ```
+export function parameter(key: string): DaemonParameter {
+    let parameter: string = _mamoru_parameter(key);
+
+    return new DaemonParameter(parameter)
+}
+
+class DaemonParameter {
+    value: string
+
+    public constructor(value: string) {
+        this.value = value;
+    }
+
+    public asString(): string {
+        return this.value
+    }
+
+    public asBoolean(): boolean {
+        return this.value == 'true'
+    }
+
+    public asNumber(): number {
+        return parseFloat(this.value);
+    }
 }
 
 export enum HttpMethod {

@@ -3,6 +3,7 @@ pub mod validation_chain {
 }
 
 pub mod cosmos {
+    pub use super::includes::hack::TxMsgData;
     pub use cosmrs::proto::cosmos::*;
 }
 
@@ -13,25 +14,81 @@ mod includes {
     tonic::include_proto!("includes");
 }
 
-use crate::errors::DaemonParseError;
-use crate::validation_chain::{ChainType, DaemonQueryResponseDto};
+use crate::validation_chain::proto::validation_chain::DaemonMetadataContentType;
+use crate::validation_chain::{ChainType, DaemonParameter, DaemonQueryResponseDto};
 use mamoru_core::Daemon;
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
+use strum::VariantNames;
+use tracing::{error, warn};
 
-impl TryFrom<DaemonQueryResponseDto> for Daemon {
-    type Error = DaemonParseError;
+impl From<DaemonQueryResponseDto> for Vec<Daemon> {
+    fn from(value: DaemonQueryResponseDto) -> Self {
+        let metadata = value.daemon_metadata.expect("BUG: Missing DaemonMetadata.");
+        let content = metadata
+            .content
+            .expect("BUG: Missing DaemonMetadataContent.");
 
-    fn try_from(value: DaemonQueryResponseDto) -> Result<Self, Self::Error> {
-        let daemon = Self::new_sql(
-            value.daemon_id,
-            &value.daemon_metadata.unwrap().content.unwrap().query[0]
-                .clone()
-                .query,
-        )?;
+        let content_type = match DaemonMetadataContentType::from_i32(content.r#type) {
+            Some(content_type) => content_type,
+            None => {
+                error!(%value.daemon_id, content_type = content.r#type, "Received unsupported `DaemonMetadataContentType`.");
 
-        Ok(daemon)
+                return vec![];
+            }
+        };
+
+        match content_type {
+            DaemonMetadataContentType::Sql => content
+                .query
+                .into_iter()
+                .filter_map(
+                    |query| match Daemon::new_sql(value.daemon_id.clone(), &query.query) {
+                        Ok(daemon) => Some(daemon),
+                        Err(err) => {
+                            error!(?err, %value.daemon_id, "Failed to parse SQL daemon.");
+
+                            None
+                        }
+                    },
+                )
+                .collect(),
+            DaemonMetadataContentType::Wasm => {
+                let wasm_bytes = match base64::decode(&content.wasm_module) {
+                    Ok(wasm_bytes) => wasm_bytes,
+                    Err(err) => {
+                        error!(?err, %value.daemon_id, "Failed to decode WASM base64-encoded payload.");
+
+                        return vec![];
+                    }
+                };
+                let parameters = make_daemon_parameters(value.parameters);
+
+                match Daemon::new_assembly_script(value.daemon_id.clone(), wasm_bytes, parameters) {
+                    Ok(daemon) => vec![daemon],
+                    Err(err) => {
+                        error!(?err, %value.daemon_id, "Failed to parse WASM daemon.");
+
+                        vec![]
+                    }
+                }
+            }
+        }
     }
+}
+
+fn make_daemon_parameters(values: Vec<DaemonParameter>) -> mamoru_core::DaemonParameters {
+    let mut results = mamoru_core::DaemonParameters::new();
+
+    for parameter_dto in values {
+        if results.get(&parameter_dto.key).is_some() {
+            warn!(key = %parameter_dto.key, "Duplicate daemon parameter key");
+        } else {
+            results.insert(parameter_dto.key, parameter_dto.value);
+        }
+    }
+
+    results
 }
 
 impl<'de> Deserialize<'de> for ChainType {
@@ -41,7 +98,13 @@ impl<'de> Deserialize<'de> for ChainType {
     {
         let chain_name = String::deserialize(deserializer)?;
 
-        ChainType::from_str(&chain_name).map_err(serde::de::Error::custom)
+        ChainType::from_str(&chain_name).map_err(|_| {
+            serde::de::Error::custom(format!(
+                "Failed to parse chain type. Given: {}, Available: [{}]",
+                chain_name,
+                ChainType::VARIANTS.join(", ")
+            ))
+        })
     }
 }
 

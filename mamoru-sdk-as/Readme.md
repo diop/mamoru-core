@@ -15,6 +15,17 @@ query(query: string): Array<JSON.Obj>;
 
 // Reports an incident.
 report(): void;
+
+// Returns a `key` parameter defined for the daemon.
+// The return value is `DaemonParameter` object from which 
+// you can receive a specific type:
+// ```
+// let param = parameter("foo");
+// let maybe_bool = param.asBoolean();
+// let maybe_number = param.asNumber();
+// let str = param.asString();
+// ```
+parameter(key: string): DaemonParameter;
 ```
 
 ### Installation

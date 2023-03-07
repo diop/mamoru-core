@@ -6,7 +6,7 @@ pub use blockchain_data::{
     value::{StructValue, Value, ValueData},
     BlockchainData, BlockchainDataCtx, BlockchainDataCtxBuilder, TableDef,
 };
-pub use daemon::Daemon;
+pub use daemon::{Daemon, DaemonParameters};
 pub use errors::{DataError, ValueError};
 
 #[cfg(feature = "test_data")]

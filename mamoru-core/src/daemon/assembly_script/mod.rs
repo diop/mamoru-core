@@ -1,11 +1,11 @@
 mod imports;
 
-use crate::daemon::{Executor, Incident};
+use crate::daemon::{DaemonParameters, Executor, Incident};
 use crate::{BlockchainDataCtx, DataError};
 use as_ffi_bindings::{Read, StringPtr, Write};
 use async_trait::async_trait;
 use std::fmt::{Debug, Formatter};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use tracing::Level;
 use wasmer::{
     AsStoreMut, AsStoreRef, Engine, FunctionEnv, Instance, Memory, Module, Store, TypedFunction,
@@ -34,6 +34,10 @@ pub struct AssemblyScriptExecutor {
 
     /// The engine used to compile the module.
     engine: Engine,
+
+    /// The parameters that are passed to Daemon.
+    /// Accessible from WASM via host functions.
+    parameters: Arc<DaemonParameters>,
 }
 
 #[async_trait]
@@ -58,12 +62,16 @@ impl Executor for AssemblyScriptExecutor {
 }
 
 impl AssemblyScriptExecutor {
-    pub fn new(wasm: impl AsRef<[u8]>) -> Result<Self, DataError> {
+    pub fn new(wasm: impl AsRef<[u8]>, parameters: DaemonParameters) -> Result<Self, DataError> {
         let store = Store::default();
         let engine = store.engine().clone();
         let module = Module::from_binary(&engine, wasm.as_ref()).map_err(DataError::WasmCompile)?;
 
-        Ok(Self { module, engine })
+        Ok(Self {
+            module,
+            engine,
+            parameters: Arc::new(parameters),
+        })
     }
 
     /// Creates new environment for WASM execution.
@@ -81,6 +89,7 @@ impl AssemblyScriptExecutor {
                 bindings_env: as_ffi_bindings::Env::default(),
                 data_ctx: ctx.clone(),
                 incidents_tx: tx,
+                parameters: Arc::clone(&self.parameters),
             },
         );
 
@@ -101,6 +110,7 @@ pub(crate) struct WasmEnv {
     bindings_env: as_ffi_bindings::Env,
     data_ctx: BlockchainDataCtx,
     incidents_tx: mpsc::SyncSender<Incident>,
+    parameters: Arc<DaemonParameters>,
 }
 
 impl WasmEnv {
