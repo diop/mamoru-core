@@ -1,5 +1,7 @@
-use crate::blockchain_data::value::{StructValue, Value, ValueData};
-use crate::{BlockchainDataCtx, BlockchainDataCtxBuilder};
+use crate::{
+    blockchain_data::value::{StructValue, Value, ValueData},
+    BlockchainDataCtx, BlockchainDataCtxBuilder,
+};
 use blockchain_data_macro::BlockchainData;
 use datafusion::arrow::datatypes::{DataType, TimeUnit};
 use maplit::hashmap;

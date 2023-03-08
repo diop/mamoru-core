@@ -5,32 +5,44 @@ pub use crate::validation_chain::proto::validation_chain::{
     Transaction as TransactionId,
 };
 
-use crate::errors::ValidationClientError;
-use crate::validation_chain::config::MessageClientConfig;
-use crate::validation_chain::proto::cosmos::auth::v1beta1::query_client::QueryClient as CosmosQueryClient;
-use crate::validation_chain::proto::cosmos::auth::v1beta1::{BaseAccount, QueryAccountRequest};
-use crate::validation_chain::proto::cosmos::tx::v1beta1::service_client::ServiceClient as CosmosServiceClient;
-use crate::validation_chain::proto::cosmos::tx::v1beta1::{BroadcastMode, BroadcastTxRequest};
-use crate::validation_chain::proto::cosmos::TxMsgData;
-use crate::validation_chain::proto::validation_chain::source::SourceType;
-use crate::validation_chain::proto::validation_chain::{
-    Chain, CreateDaemonMetadataCommandRequestDto,
-    DaemonMetadataContent as ProtoDaemonMetadataContent,
-    DaemonMetadataContentQuery as ProtoDaemonMetadataContentQuery, DaemonMetadataContentType,
-    DaemonMetadataParemeter, DaemonRegisterCommandRequestDto, DaemonsSubscribeCommandRequestDto,
-    IncidentReportCommandRequestDto, MsgCreateDaemonMetadata, MsgRegisterDaemon,
-    MsgRegisterSniffer, MsgReportIncident, MsgSubscribeDaemons, MsgUnregisterSniffer,
-    SnifferRegisterCommandRequestDto, SnifferUnregisterCommandRequestDto, Source,
+use crate::{
+    errors::ValidationClientError,
+    validation_chain::{
+        config::MessageClientConfig,
+        proto::{
+            cosmos::{
+                auth::v1beta1::{
+                    query_client::QueryClient as CosmosQueryClient, BaseAccount,
+                    QueryAccountRequest,
+                },
+                tx::v1beta1::{
+                    service_client::ServiceClient as CosmosServiceClient, BroadcastMode,
+                    BroadcastTxRequest,
+                },
+                TxMsgData,
+            },
+            validation_chain::{
+                source::SourceType, Chain, CreateDaemonMetadataCommandRequestDto,
+                DaemonMetadataContent as ProtoDaemonMetadataContent,
+                DaemonMetadataContentQuery as ProtoDaemonMetadataContentQuery,
+                DaemonMetadataContentType, DaemonMetadataParemeter,
+                DaemonRegisterCommandRequestDto, DaemonsSubscribeCommandRequestDto,
+                IncidentReportCommandRequestDto, MsgCreateDaemonMetadata, MsgRegisterDaemon,
+                MsgRegisterSniffer, MsgReportIncident, MsgSubscribeDaemons, MsgUnregisterSniffer,
+                SnifferRegisterCommandRequestDto, SnifferUnregisterCommandRequestDto, Source,
+            },
+        },
+        ClientResult, DaemonParameter, DaemonRelay,
+    },
 };
-use crate::validation_chain::{ClientResult, DaemonParameter, DaemonRelay};
-use cosmrs::proto::traits::TypeUrl;
-use cosmrs::tx::{
-    AccountNumber, Body, BodyBuilder, Fee, MessageExt, SequenceNumber, SignDoc, SignerInfo,
+use cosmrs::{
+    proto::traits::TypeUrl,
+    tx::{AccountNumber, Body, BodyBuilder, Fee, MessageExt, SequenceNumber, SignDoc, SignerInfo},
+    AccountId, Coin,
 };
-use cosmrs::{AccountId, Coin};
+use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 use prost::Message;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use tracing::error;
 
@@ -41,6 +53,8 @@ const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
 pub struct IncidentReport {
     pub daemon_id: String,
     pub source: IncidentSource,
+    pub chain: ChainType,
+    pub incident: Incident,
 }
 
 /// Safer wrapper over part of [`IncidentReportCommandRequestDto`]
@@ -216,6 +230,22 @@ impl MessageClient {
                     }
                 };
 
+                let (severity, message, address, data) = {
+                    let severity = match report.incident.severity {
+                        MamoruIncidentSeverity::Info => IncidentSeverity::SeverityInfo,
+                        MamoruIncidentSeverity::Warning => IncidentSeverity::SeverityWarning,
+                        MamoruIncidentSeverity::Error => IncidentSeverity::SeverityError,
+                        MamoruIncidentSeverity::Alert => IncidentSeverity::SeverityAlert,
+                    };
+
+                    (
+                        severity,
+                        report.incident.message,
+                        report.incident.address,
+                        report.incident.data.into(),
+                    )
+                };
+
                 MsgReportIncident {
                     creator: sniffer.clone(),
                     incident: Some(IncidentReportCommandRequestDto {
@@ -226,12 +256,13 @@ impl MessageClient {
                         }),
                         block,
                         tx,
-                        // @TODO: Fill this fields from SQL
-                        severity: Default::default(),
-                        message: Default::default(),
-                        address: Default::default(),
-                        data: Default::default(),
-                        chain: Default::default(),
+                        chain: Some(Chain {
+                            chain_type: report.chain.into(),
+                        }),
+                        severity: severity as i32,
+                        message,
+                        address,
+                        data: Some(data),
                     }),
                 }
             })

@@ -7,8 +7,7 @@ use maplit::hashmap;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use std::collections::HashMap;
-use syn::spanned::Spanned;
-use syn::{parse_macro_input, DeriveInput, Expr};
+use syn::{parse_macro_input, spanned::Spanned, DeriveInput, Expr};
 
 #[proc_macro_derive(BlockchainData, attributes(schema))]
 pub fn derive_blockchain_data(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {

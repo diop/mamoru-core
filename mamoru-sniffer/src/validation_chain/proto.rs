@@ -14,9 +14,11 @@ mod includes {
     tonic::include_proto!("includes");
 }
 
-use crate::validation_chain::proto::validation_chain::DaemonMetadataContentType;
-use crate::validation_chain::{ChainType, DaemonParameter, DaemonQueryResponseDto};
-use mamoru_core::Daemon;
+use crate::validation_chain::{
+    proto::validation_chain::{value::Kind, DaemonMetadataContentType, ListValue, Struct, Value},
+    ChainType, DaemonParameter, DaemonQueryResponseDto, IncidentSeverity,
+};
+use mamoru_core::{Daemon, IncidentData, IncidentDataStruct, IncidentDataValue};
 use serde::{Deserialize, Deserializer};
 use std::str::FromStr;
 use strum::VariantNames;
@@ -29,29 +31,25 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
             .content
             .expect("BUG: Missing DaemonMetadataContent.");
 
-        let content_type = match DaemonMetadataContentType::from_i32(content.r#type) {
-            Some(content_type) => content_type,
-            None => {
-                error!(%value.daemon_id, content_type = content.r#type, "Received unsupported `DaemonMetadataContentType`.");
-
-                return vec![];
-            }
-        };
-
-        match content_type {
+        match content.r#type() {
             DaemonMetadataContentType::Sql => content
                 .query
                 .into_iter()
-                .filter_map(
-                    |query| match Daemon::new_sql(value.daemon_id.clone(), &query.query) {
+                .filter_map(|query| {
+                    let incident_data = IncidentData {
+                        message: query.incident_message.clone(),
+                        severity: query.severity().into(),
+                    };
+
+                    match Daemon::new_sql(value.daemon_id.clone(), &query.query, incident_data) {
                         Ok(daemon) => Some(daemon),
                         Err(err) => {
                             error!(?err, %value.daemon_id, "Failed to parse SQL daemon.");
 
                             None
                         }
-                    },
-                )
+                    }
+                })
                 .collect(),
             DaemonMetadataContentType::Wasm => {
                 let wasm_bytes = match base64::decode(&content.wasm_module) {
@@ -74,6 +72,46 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
                 }
             }
         }
+    }
+}
+
+impl From<IncidentSeverity> for mamoru_core::IncidentSeverity {
+    fn from(value: IncidentSeverity) -> Self {
+        match value {
+            IncidentSeverity::SeverityInfo => Self::Info,
+            IncidentSeverity::SeverityWarning => Self::Warning,
+            IncidentSeverity::SeverityError => Self::Error,
+            IncidentSeverity::SeverityAlert => Self::Alert,
+        }
+    }
+}
+
+impl From<IncidentDataStruct> for Struct {
+    fn from(value: IncidentDataStruct) -> Self {
+        Struct {
+            fields: value
+                .fields()
+                .into_iter()
+                .map(|(key, value)| (key, value.into()))
+                .collect(),
+        }
+    }
+}
+
+impl From<IncidentDataValue> for Value {
+    fn from(value: IncidentDataValue) -> Self {
+        let kind = match value {
+            IncidentDataValue::Null => Kind::NullValue(0),
+            IncidentDataValue::Number(number) => Kind::NumberValue(number),
+            IncidentDataValue::String(string) => Kind::StringValue(string),
+            IncidentDataValue::Bool(bool) => Kind::BoolValue(bool),
+            IncidentDataValue::Struct(struct_) => Kind::StructValue((*struct_).into()),
+            IncidentDataValue::List(list) => Kind::ListValue(ListValue {
+                values: list.into_iter().map(Into::into).collect(),
+            }),
+        };
+
+        Value { kind: Some(kind) }
     }
 }
 

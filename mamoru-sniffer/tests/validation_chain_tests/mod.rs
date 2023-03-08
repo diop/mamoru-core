@@ -1,14 +1,17 @@
-use cosmrs::crypto::{secp256k1, PublicKey};
-use cosmrs::{AccountId, Coin};
-use mamoru_sniffer::validation_chain::{
-    AccountConfig, ChainType, ConnectionConfig, MessageClient, MessageClientConfig, QueryClient,
-    QueryClientConfig,
+use cosmrs::{
+    crypto::{secp256k1, PublicKey},
+    AccountId, Coin,
 };
-use mamoru_sniffer::{Sniffer, SnifferConfig};
+use mamoru_sniffer::{
+    validation_chain::{
+        AccountConfig, ChainType, ConnectionConfig, MessageClient, MessageClientConfig,
+        QueryClient, QueryClientConfig,
+    },
+    Sniffer, SnifferConfig,
+};
 use serde::Serialize;
 use std::error::Error;
-use tokio_retry::strategy::FixedInterval;
-use tokio_retry::{Action, Retry};
+use tokio_retry::{strategy::FixedInterval, Action, Retry};
 
 mod message_client;
 mod query_client;

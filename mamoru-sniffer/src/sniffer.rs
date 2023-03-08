@@ -1,19 +1,22 @@
-use crate::errors::SnifferError;
-use crate::from_env;
-use crate::validation_chain::{
-    ChainType, DaemonQueryResponseDto, IncidentReport, IncidentSource, MessageClient,
-    MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
+use crate::{
+    errors::SnifferError,
+    from_env,
+    validation_chain::{
+        ChainType, DaemonQueryResponseDto, IncidentReport, IncidentSource, MessageClient,
+        MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
+    },
 };
 use futures::TryStreamExt;
-use mamoru_core::{BlockchainDataCtx, Daemon};
+use mamoru_core::{BlockchainDataCtx, Daemon, Incident};
 use serde::Deserialize;
-use std::ops::Add;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::mpsc::error::TrySendError;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::RwLock;
-use tokio::time::Instant;
+use std::{ops::Add, sync::Arc, time::Duration};
+use tokio::{
+    sync::{
+        mpsc::{error::TrySendError, Receiver, Sender},
+        RwLock,
+    },
+    time::Instant,
+};
 use tracing::{debug, error, info, warn};
 
 #[derive(Deserialize)]
@@ -55,6 +58,7 @@ type SnifferResult<T> = Result<T, SnifferError>;
 pub struct Sniffer {
     report_tx: Sender<IncidentReport>,
     rules: Arc<RwLock<Vec<Daemon>>>,
+    chain_type: ChainType,
 }
 
 impl Sniffer {
@@ -76,39 +80,47 @@ impl Sniffer {
 
         tokio::spawn(async move { bg_task.run().await });
 
-        Ok(Self { report_tx, rules })
+        Ok(Self {
+            report_tx,
+            rules,
+            chain_type: config.chain_type,
+        })
     }
 
     /// Reports to Validation Chain if the provided transaction matches
     /// any rule from the internal storage.
     #[tracing::instrument(skip(ctx, self), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "debug"))]
     pub async fn observe_data(&self, ctx: BlockchainDataCtx) {
-        let matched_daemon_ids = self.check_incidents(&ctx).await;
-        debug!(len = matched_daemon_ids.len(), "Matched rules");
+        let incidents_to_report = self.check_incidents(&ctx).await;
+        debug!(len = incidents_to_report.len(), "Matched daemons");
 
-        for daemon_id in matched_daemon_ids {
-            let sent = self.report_tx.try_send(IncidentReport {
-                daemon_id,
-                source: IncidentSource::Transaction {
-                    block: None,
-                    transaction: TransactionId {
-                        tx_id: ctx.tx_id().to_string(),
-                        hash: ctx.tx_hash().to_string(),
+        for (daemon_id, incidents) in incidents_to_report {
+            for incident in incidents {
+                let sent = self.report_tx.try_send(IncidentReport {
+                    daemon_id: daemon_id.clone(),
+                    source: IncidentSource::Transaction {
+                        block: None,
+                        transaction: TransactionId {
+                            tx_id: ctx.tx_id().to_string(),
+                            hash: ctx.tx_hash().to_string(),
+                        },
                     },
-                },
-            });
+                    chain: self.chain_type,
+                    incident,
+                });
 
-            match sent {
-                Ok(_) => {}
-                Err(TrySendError::Full(_)) => {
-                    error!("Reports channel is full. It may happen because of an event spike or incident reporting is stuck.");
+                match sent {
+                    Ok(_) => {}
+                    Err(TrySendError::Full(_)) => {
+                        error!("Reports channel is full. It may happen because of an event spike or incident reporting is stuck.");
 
-                    continue;
-                }
+                        continue;
+                    }
 
-                Err(TrySendError::Closed(_)) => {
-                    // This is non-recoverable error, we should panic here.
-                    panic!("Reports channel is closed.");
+                    Err(TrySendError::Closed(_)) => {
+                        // This is non-recoverable error, we should panic here.
+                        panic!("Reports channel is closed.");
+                    }
                 }
             }
         }
@@ -119,7 +131,7 @@ impl Sniffer {
     /// This method doesn't fail as we don't want to break all of our pipeline
     /// because of a single invalid rule.
     #[tracing::instrument(skip(ctx, self), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "info"))]
-    async fn check_incidents(&self, ctx: &BlockchainDataCtx) -> Vec<String> {
+    async fn check_incidents(&self, ctx: &BlockchainDataCtx) -> Vec<(String, Vec<Incident>)> {
         let results = {
             let rules = self.rules.read().await;
             let futures: Vec<_> = rules
@@ -132,18 +144,19 @@ impl Sniffer {
 
         results
             .into_iter()
-            .filter_map(|(result, rule_id)| match result {
+            .filter_map(|(result, daemon_id)| match result {
                 Ok(ctx) => {
                     if ctx.matched {
-                        info!(%rule_id, "Rule is matched");
-                        Some(rule_id)
+                        info!(%daemon_id, "Daemon is matched");
+
+                        Some((daemon_id, ctx.incidents))
                     } else {
-                        debug!(%rule_id, "Rule is NOT matched");
+                        debug!(%daemon_id, "Daemon is NOT matched");
                         None
                     }
                 }
                 Err(err) => {
-                    error!(?err, "Failed to verify rule, skipping...");
+                    error!(?err, "Failed to verify daemon, skipping...");
                     None
                 }
             })

@@ -1,9 +1,9 @@
-use crate::errors::ValidationClientError;
-use crate::from_env_or_fail;
-use crate::validation_chain::ClientResult;
-use cosmrs::crypto::{secp256k1, PublicKey};
-use cosmrs::tendermint::chain;
-use cosmrs::{AccountId, Denom};
+use crate::{errors::ValidationClientError, from_env_or_fail, validation_chain::ClientResult};
+use cosmrs::{
+    crypto::{secp256k1, PublicKey},
+    tendermint::chain,
+    AccountId, Denom,
+};
 use serde::{Deserialize, Deserializer};
 use std::sync::Arc;
 

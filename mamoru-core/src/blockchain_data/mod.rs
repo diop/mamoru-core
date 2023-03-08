@@ -2,10 +2,10 @@ mod udf;
 pub mod value;
 
 use crate::DataError;
-use datafusion::arrow::datatypes::Schema;
-use datafusion::arrow::error::ArrowError;
-use datafusion::arrow::record_batch::RecordBatch;
-use datafusion::prelude::SessionContext;
+use datafusion::{
+    arrow::{datatypes::Schema, error::ArrowError, record_batch::RecordBatch},
+    prelude::SessionContext,
+};
 use std::sync::Arc;
 
 /// Represents blockchain-agnostic data that is

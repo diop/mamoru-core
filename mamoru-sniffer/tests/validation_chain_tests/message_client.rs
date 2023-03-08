@@ -1,4 +1,5 @@
 use crate::validation_chain_tests::message_client;
+use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 use mamoru_sniffer::validation_chain::{
     BlockId, ChainType, DaemonMetadataContent, DaemonMetadataContentQuery, DaemonMetadataType,
     IncidentReport, IncidentSeverity, IncidentSource, RegisterDaemonMetadataRequest, TransactionId,
@@ -61,6 +62,13 @@ async fn smoke() {
                     block_id: "test_block_id".to_string(),
                     hash: "test_block_id".to_string(),
                 }),
+            },
+            chain: ChainType::SuiDevnet,
+            incident: Incident {
+                severity: MamoruIncidentSeverity::Info,
+                message: "Test".to_string(),
+                address: "".to_string(),
+                data: Default::default(),
             },
         })
         .collect();

@@ -1,11 +1,15 @@
 mod imports;
 
-use crate::daemon::{DaemonParameters, Executor, Incident};
-use crate::{BlockchainDataCtx, DataError};
+use crate::{
+    daemon::{DaemonParameters, Executor, Incident},
+    BlockchainDataCtx, DataError,
+};
 use as_ffi_bindings::{Read, StringPtr, Write};
 use async_trait::async_trait;
-use std::fmt::{Debug, Formatter};
-use std::sync::{mpsc, Arc};
+use std::{
+    fmt::{Debug, Formatter},
+    sync::{mpsc, Arc},
+};
 use tracing::Level;
 use wasmer::{
     AsStoreMut, AsStoreRef, Engine, FunctionEnv, Instance, Memory, Module, Store, TypedFunction,

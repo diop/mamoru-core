@@ -1,5 +1,4 @@
-use cosmrs::proto::cosmos::base::abci::v1beta1::TxResponse;
-use cosmrs::{tendermint, ErrorReport};
+use cosmrs::{proto::cosmos::base::abci::v1beta1::TxResponse, tendermint, ErrorReport};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

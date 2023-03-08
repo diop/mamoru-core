@@ -1,37 +1,87 @@
-use crate::daemon::{Executor, Incident};
-use crate::{BlockchainDataCtx, DataError};
+use crate::{
+    daemon::{
+        incident::{IncidentDataStruct, IncidentSeverity},
+        Executor, Incident,
+    },
+    BlockchainDataCtx, DataError,
+};
 use async_trait::async_trait;
-use datafusion::arrow::json::writer::record_batches_to_json_rows;
-use datafusion::dataframe::DataFrame;
-use datafusion::sql::parser::{DFParser, Statement};
-use datafusion::sql::sqlparser;
+use datafusion::{
+    arrow::json::writer::record_batches_to_json_rows,
+    dataframe::DataFrame,
+    sql::{
+        parser::{DFParser, Statement},
+        sqlparser,
+    },
+};
 use serde_json::{Map, Value};
 
-pub(crate) type VerifyCtxOutputs = Vec<Map<String, Value>>;
+pub(crate) type SqlQueryOutputs = Vec<Map<String, Value>>;
 
-/// Executes SQL queries.
+/// SQL daemon executor.
 #[derive(Debug)]
 pub struct SqlExecutor {
-    query: Statement,
+    query: SqlQuery,
+    incident_data: IncidentData,
+}
+
+/// The data that is used for incident reporting.
+#[derive(Debug)]
+pub struct IncidentData {
+    pub message: String,
+    pub severity: IncidentSeverity,
 }
 
 impl SqlExecutor {
-    pub fn new(expression: &str) -> Result<Self, DataError> {
-        let query = Self::make_statement(expression)?;
+    pub fn new(expression: &str, incident_data: IncidentData) -> Result<Self, DataError> {
+        let query = SqlQuery::new(expression)?;
 
-        Ok(Self { query })
+        Ok(Self {
+            query,
+            incident_data,
+        })
+    }
+}
+
+#[async_trait]
+impl Executor for SqlExecutor {
+    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
+        let data = self.query.run(ctx).await?;
+
+        let mut incidents = vec![];
+
+        if !data.is_empty() {
+            incidents.push(Incident {
+                severity: self.incident_data.severity.clone(),
+                message: self.incident_data.message.clone(),
+                address: "".to_string(),
+                data: IncidentDataStruct::new(),
+            });
+        }
+
+        Ok(incidents)
+    }
+}
+
+#[derive(Debug)]
+pub struct SqlQuery {
+    statement: Statement,
+}
+
+impl SqlQuery {
+    pub fn new(expression: &str) -> Result<Self, DataError> {
+        let statement = Self::make_statement(expression)?;
+
+        Ok(Self { statement })
     }
 
     /// Executes the given query against the data context.
     /// Returns json-serializable rows.
-    pub(crate) async fn query(
-        &self,
-        ctx: &BlockchainDataCtx,
-    ) -> Result<VerifyCtxOutputs, DataError> {
+    pub(crate) async fn run(&self, ctx: &BlockchainDataCtx) -> Result<SqlQueryOutputs, DataError> {
         let state = ctx.session().state();
 
         let plan = state
-            .statement_to_plan(self.query.clone())
+            .statement_to_plan(self.statement.clone())
             .await
             .map_err(DataError::PlanQuery)?;
 
@@ -70,20 +120,5 @@ impl SqlExecutor {
         } else {
             Err(DataError::UnsupportedStatement)
         }
-    }
-}
-
-#[async_trait]
-impl Executor for SqlExecutor {
-    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
-        let data = self.query(ctx).await?;
-
-        let mut incidents = vec![];
-
-        if !data.is_empty() {
-            incidents.push(Incident);
-        }
-
-        Ok(incidents)
     }
 }

@@ -48,9 +48,15 @@ jobs:
           node-version: 19.x
 
       - name: Build
+        # using force due to conflicting requirements in tests package
         run: |
-          npm ci
+          npm install --force
           npm run asbuild:debug
+        working-directory: ./mamoru-sdk-as
+
+      - name: Test
+        run: |
+          npm run test:ci
         working-directory: ./mamoru-sdk-as
 
   tests:

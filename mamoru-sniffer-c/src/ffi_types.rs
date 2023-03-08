@@ -1,7 +1,7 @@
-use mamoru_sniffer::core::{
-    BlockchainData, BlockchainDataCtx, BlockchainDataCtxBuilder, Value, ValueData,
+use mamoru_sniffer::{
+    core::{BlockchainData, BlockchainDataCtx, BlockchainDataCtxBuilder, Value, ValueData},
+    Sniffer, SnifferError,
 };
-use mamoru_sniffer::{Sniffer, SnifferError};
 use safer_ffi::prelude::*;
 
 #[derive_ReprC]

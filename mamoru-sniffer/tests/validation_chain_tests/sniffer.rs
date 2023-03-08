@@ -6,8 +6,7 @@ use mamoru_sniffer::validation_chain::{
     IncidentQueryResponseDto, IncidentSeverity, RegisterDaemonMetadataRequest,
 };
 
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::future;
 use test_log::test;
 

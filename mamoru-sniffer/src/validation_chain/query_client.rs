@@ -1,16 +1,22 @@
-pub use crate::validation_chain::proto::cosmos::base::query::v1beta1::PageRequest;
-pub use crate::validation_chain::proto::validation_chain::{
-    DaemonMetadata, DaemonParameter, DaemonQueryResponseDto, DaemonRelay, IncidentQueryResponseDto,
-    QueryListDaemonsResponse, SnifferQueryResponseDto,
+pub use crate::validation_chain::{
+    proto::{
+        cosmos::base::query::v1beta1::PageRequest,
+        validation_chain::{
+            DaemonMetadata, DaemonParameter, DaemonQueryResponseDto, DaemonRelay,
+            IncidentQueryResponseDto, QueryListDaemonsResponse, SnifferQueryResponseDto,
+        },
+    },
+    ChainType,
 };
-pub use crate::validation_chain::ChainType;
 
-use crate::validation_chain::proto::validation_chain::query_client::QueryClient as GeneratedQueryClient;
-use crate::validation_chain::proto::validation_chain::{
-    Chain, QueryListDaemonsRequest, QueryListIncidentsRequest, QueryListIncidentsResponse,
-    QueryListSniffersRequest, QueryListSniffersResponse,
+use crate::validation_chain::{
+    proto::validation_chain::{
+        query_client::QueryClient as GeneratedQueryClient, Chain, QueryListDaemonsRequest,
+        QueryListIncidentsRequest, QueryListIncidentsResponse, QueryListSniffersRequest,
+        QueryListSniffersResponse,
+    },
+    ClientResult, QueryClientConfig,
 };
-use crate::validation_chain::{ClientResult, QueryClientConfig};
 use async_stream::try_stream;
 use futures::Stream;
 use tracing::warn;

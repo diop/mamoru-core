@@ -1,46 +1,125 @@
 // The entry file of your WebAssembly module.
 
-import { JSON, JSONEncoder } from "assemblyscript-json/assembly";
+import { JSON } from "assemblyscript-json/assembly";
 
 import {
     _mamoru_query,
-    _mamoru_report,
     _mamoru_http,
     _mamoru_parameter,
+    _mamoru_report,
 } from "./imports";
 
-// Performs HTTP request to a remote host
-// Returns an HTTP response or an error in `HttpResponse`.
-export function http(request: HttpRequest): HttpResponse {
+import { HttpRequest, HttpResponse, HttpMethod } from "./http";
+
+export { HttpResponse, HttpMethod };
+
+import {
+    Incident,
+    IncidentSeverity,
+    IncidentDataStruct,
+    NumberDataValue,
+    StructDataValue,
+    NullDataValue,
+    StringDataValue,
+    BooleanDataValue,
+    ListDataValue
+} from "./incident";
+
+export {
+    IncidentSeverity,
+    IncidentDataStruct,
+    NumberDataValue,
+    StructDataValue,
+    NullDataValue,
+    StringDataValue,
+    BooleanDataValue,
+    ListDataValue,
+};
+
+/**
+ * Performs HTTP request to a remote host
+ *
+ * @returns {HttpResponse} The response or an error
+ *
+ * @example
+ * let response = http(HttpMethod.GET, "https://example.com/");
+ * if (response.status() == 200) {
+ *     // handle response
+ * }
+ */
+export function http(
+    method: HttpMethod,
+    url: string,
+    headers: Map<string, string> | null = null,
+    body: string | null = null,
+): HttpResponse {
+    const request = new HttpRequest(method, url, headers, body);
     let payload: string = _mamoru_http(request.toJSON());
 
     return HttpResponse.fromJSON(payload)
 }
 
-// Queries the daemon context.
-// `query` parameter must be a valid SQL query for the network daemon running in.
-// Returns a list of objects, where object keys are the fields returned by the query.
-export function query(query: string): Array<JSON.Obj> {
+/**
+ * Queries the daemon context.
+ * @param query Valid SQL query for the network.
+ *
+ * @return {Array<JSON.Obj>} Object keys are the fields returned by the query.
+ *
+ * @example
+ * let rows = query("SELECT t.gas_used FROM transactions t WHERE t.digest = 'DUMMY_HASH'");
+ *
+ * rows.forEach(value => {
+ *     let gas_used = value.getInteger("gas_used")!.valueOf();
+ *
+ *     if (gas_used == 42_000) {
+ *         // handle value
+ *     }
+ * });
+ */
+export function query(query: string): JSON.Obj[] {
     let query_result: string = _mamoru_query(query);
     let json: JSON.Arr = <JSON.Arr>(JSON.parse(query_result));
 
     return json.valueOf().map((value: JSON.Value) => value as JSON.Obj);
 }
 
-// Reports an incident.
-export function report(): void {
-    _mamoru_report()
+/**
+ * Reports an incident to Validation Chain.
+ *
+ * @example
+ * let data = new IncidentDataStruct();
+ *
+ * data.addNull("null");
+ * data.addNumber("number", 42.0);
+ * data.addString("string", "hello");
+ * data.addBoolean("boolean", true);
+ * data.addList("list", [
+ *     new StringDataValue("first"),
+ *     new StringDataValue("second"),
+ * ]);
+ *
+ * report(IncidentSeverity.Alert, "Test", data);
+ */
+export function report(
+    severity: IncidentSeverity,
+    message: string,
+    data: IncidentDataStruct | null = null,
+    address: string = "",
+): void {
+    _mamoru_report((new Incident(severity, message, data, address)).toJSON())
 }
 
-// Returns a `key` parameter defined for the daemon.
-// The return value is `DaemonParameter` object from which
-// you can receive a specific type:
-// ```
-// let param = parameter("foo");
-// let maybe_bool = param.asBoolean();
-// let maybe_number = param.asNumber();
-// let str = param.asString();
-// ```
+/**
+ * Retrieve a parameter value from the daemon configuration.
+ *
+ * @returns {DaemonParameter}
+ *
+ * @example
+ * let param = parameter("foo");
+ * let maybe_bool = param.asBoolean();
+ * let maybe_number = param.asNumber();
+ * let str = param.asString();
+ */
 export function parameter(key: string): DaemonParameter {
     let parameter: string = _mamoru_parameter(key);
 
@@ -64,143 +143,5 @@ class DaemonParameter {
 
     public asNumber(): number {
         return parseFloat(this.value);
-    }
-}
-
-export enum HttpMethod {
-    POST,
-    GET,
-    PUT,
-    PATCH,
-    DELETE,
-}
-
-function httpMethodToString(method: HttpMethod): string {
-    switch (method) {
-        case HttpMethod.POST:
-            return "POST"
-        case HttpMethod.GET:
-            return "GET"
-        case HttpMethod.PUT:
-            return "PUT"
-        case HttpMethod.PATCH:
-            return "PATCH"
-        case HttpMethod.DELETE:
-            return "DELETE"
-        default:
-            return "UNDEFINED"
-    }
-}
-
-export class HttpRequest {
-    method: HttpMethod
-    url: string
-    body: string | null
-    headers: Map<string, string>
-
-    public constructor(
-        method: HttpMethod,
-        url: string,
-        headers: Map<string, string> | null = null,
-        body: string | null = null,
-    ) {
-        this.method = method;
-        this.url = url;
-        this.body = body;
-
-        if (headers != null) {
-            this.headers = headers;
-        } else {
-            this.headers = new Map<string, string>();
-        }
-    }
-
-    toJSON(): string {
-        let encoder = new JSONEncoder();
-        encoder.pushObject(null);
-        encoder.setString("method", httpMethodToString(this.method));
-        encoder.setString("url", this.url);
-
-        let body = this.body;
-        if (body != null) {
-            encoder.setString("body", body);
-        }
-
-        {
-            encoder.pushObject("headers");
-            let keys = this.headers.keys();
-
-            for (let i = 0; i < keys.length; ++i) {
-                let key = keys[i];
-
-                encoder.setString(key, this.headers.get(key));
-            }
-
-            encoder.popObject();
-        }
-
-        encoder.popObject();
-
-        return encoder.toString();
-    }
-}
-
-class HttpResponse {
-    payload: JSON.Obj
-
-    constructor(payload: JSON.Obj) {
-        this.payload = payload
-    }
-
-    static fromJSON(json: string): HttpResponse {
-        let parsed: JSON.Obj = <JSON.Obj>(JSON.parse(json));
-
-        return new HttpResponse(parsed)
-    }
-
-    public status(): u16 {
-        // this cast should be safe, as `u16` is used on the host system
-        return this.payload.getInteger("status")!.valueOf() as u16
-    }
-
-    public error(): string | null {
-        let error = this.payload.getString("error");
-
-        if (error == null) {
-            return null;
-        } else {
-            return error.valueOf();
-        }
-    }
-
-    public headers(): Map<String, String> {
-        let headersObj = this.payload.getObj("headers")!.valueOf();
-        let headers = new Map<String, String>();
-
-        headersObj.keys().forEach((key) => {
-            let value = headersObj.get(key) as JSON.Str;
-            headers.set(key, value.valueOf());
-        });
-
-        return headers;
-    }
-
-    public body(): Uint8Array | null {
-        let body = this.payload.getArr("body");
-
-        if (body == null) {
-            return null;
-        } else {
-            let bodyValue = body.valueOf();
-            let array = new Uint8Array(bodyValue.length);
-
-            bodyValue.forEach((val, idx) => {
-                let int = val as JSON.Integer;
-
-                array[idx] = int.valueOf();
-            });
-
-            return array
-        }
     }
 }

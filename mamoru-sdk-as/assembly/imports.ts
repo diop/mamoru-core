@@ -8,4 +8,4 @@ export declare function _mamoru_query(query: string): string
 export declare function _mamoru_parameter(key: string): string
 
 @external("mamoru", "report")
-export declare function _mamoru_report(): void
+export declare function _mamoru_report(incident: string): void

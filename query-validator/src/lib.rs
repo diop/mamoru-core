@@ -2,7 +2,8 @@ mod error;
 pub use error::*;
 
 use mamoru_core::{
-    BlockchainDataCtx, BlockchainDataCtxBuilder, Daemon, DaemonParameters, DataError,
+    BlockchainDataCtx, BlockchainDataCtxBuilder, Daemon, DaemonParameters, DataError, IncidentData,
+    IncidentSeverity,
 };
 
 /// Represents possible blockchains as each one has different schema
@@ -39,7 +40,14 @@ pub async fn validate_assembly_script(chain: ChainType, bytes: &[u8]) -> Result<
 }
 
 fn sql_validation_daemon(query: &str) -> Result<Daemon, DataError> {
-    Daemon::new_sql("QUERY_VALIDATE".to_string(), query)
+    Daemon::new_sql(
+        "QUERY_VALIDATE".to_string(),
+        query,
+        IncidentData {
+            message: "QUERY_VALIDATE".to_string(),
+            severity: IncidentSeverity::Info,
+        },
+    )
 }
 
 fn assembly_script_validation_daemon(bytes: &[u8]) -> Result<Daemon, DataError> {

@@ -1,10 +1,12 @@
 mod tests;
 
 use mamoru_core::{Daemon, DaemonParameters, DataError};
-use std::ffi::OsStr;
-use std::fs;
-use std::path::Path;
-use std::process::{Command, Stdio};
+use std::{
+    ffi::OsStr,
+    fs,
+    path::Path,
+    process::{Command, Stdio},
+};
 use tempfile::TempDir;
 
 /// Setups AssemblyScript project for tests.

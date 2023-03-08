@@ -1,10 +1,8 @@
-use super::{Incident, WasmEnv};
-use crate::daemon::sql::SqlExecutor;
+use super::WasmEnv;
+use crate::daemon::sql::SqlQuery;
 use as_ffi_bindings::StringPtr;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::error::Error;
-use std::time::Duration;
+use std::{collections::HashMap, error::Error, time::Duration};
 use tokio::runtime::Handle;
 use tracing::error;
 use wasmer::{imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports};
@@ -49,10 +47,10 @@ fn query(
     runtime_error_ctx(|| {
         let env = ctx.data();
         let query = env.read_string_ptr(&query, &ctx)?;
-        let sql_executor = SqlExecutor::new(&query)?;
+        let sql_query = SqlQuery::new(&query)?;
 
         let outputs =
-            Handle::current().block_on(async move { sql_executor.query(&env.data_ctx).await })?;
+            Handle::current().block_on(async move { sql_query.run(&env.data_ctx).await })?;
 
         let serialized = serde_json::to_string(&outputs)?;
         let ptr = WasmEnv::alloc_string_ptr(env.bindings_env.clone(), serialized, &mut ctx)?;
@@ -62,11 +60,18 @@ fn query(
 }
 
 #[tracing::instrument(skip_all, level = "trace")]
-fn report(ctx: FunctionEnvMut<WasmEnv>) -> Result<(), wasmer::RuntimeError> {
-    let tx = &ctx.data().incidents_tx;
+fn report(
+    ctx: FunctionEnvMut<WasmEnv>,
+    incident_json_ptr: StringPtr,
+) -> Result<(), wasmer::RuntimeError> {
+    let env = ctx.data();
+    let tx = &env.incidents_tx;
+    let incident_json = env.read_string_ptr(&incident_json_ptr, &ctx)?;
 
     runtime_error_ctx(|| {
-        tx.try_send(Incident)?;
+        let incident = serde_json::from_str(&incident_json)?;
+
+        tx.try_send(incident)?;
 
         Ok(())
     })

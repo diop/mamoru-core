@@ -1,5 +1,7 @@
-use cosmrs::bip32::{Mnemonic, XPrv};
-use cosmrs::crypto::secp256k1;
+use cosmrs::{
+    bip32::{Mnemonic, XPrv},
+    crypto::secp256k1,
+};
 use rand_core::OsRng;
 use std::error::Error;
 

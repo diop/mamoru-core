@@ -2,8 +2,8 @@ use crate::daemon::assembly_script::{
     test_daemon, test_daemon_with_parameters, AssemblyScriptModule,
 };
 use expect_test::expect;
-use mamoru_core::test_blockchain_data::data_ctx;
-use mamoru_core::DataError;
+use mamoru_core::{test_blockchain_data::data_ctx, DataError, IncidentSeverity};
+use std::collections::BTreeMap;
 use test_log::test;
 
 const AS_SDK_PATH: &str = concat!("file:", env!("CARGO_MANIFEST_DIR"), "/../mamoru-sdk-as");
@@ -92,11 +92,11 @@ async fn generates_many_incidents() {
 
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import {report} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
             for (let i = 0; i < 10; i++) {
-              report();
+              report(IncidentSeverity.Alert, "Test");
             }
         }
     """#,
@@ -119,12 +119,12 @@ async fn too_many_incident_generation_fails() {
 
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import {report} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
             // assuming 1000 is too many
             for (let i = 0; i < 1_000; i++) {
-              report();
+              report(IncidentSeverity.Alert, "Test");
             }
         }
     """#,
@@ -172,7 +172,7 @@ async fn smoke() {
     let ctx = data_ctx("DUMMY_HASH");
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import {query, report} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {query, report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
            let rows = query("SELECT t.gas_used FROM transactions t WHERE t.digest = 'DUMMY_HASH'");
@@ -181,7 +181,7 @@ async fn smoke() {
                let gas_used = value.getInteger("gas_used")!.valueOf();
 
                if (gas_used == 42_000) {
-                   report();
+                   report(IncidentSeverity.Alert, "Test");
                }
            });
         }
@@ -203,13 +203,13 @@ async fn smoke() {
 #[test(tokio::test)]
 async fn http() {
     const AS_CODE_BLOCK: &str = r#"""
-        import {http, HttpRequest, HttpMethod, report} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {http, HttpMethod, report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
-           let response = http(new HttpRequest(HttpMethod.GET, ENDPOINT));
+           let response = http(HttpMethod.GET, ENDPOINT);
 
            if (response.status() == 418) {
-               report();
+               report(IncidentSeverity.Alert, "Test");
            }
         }
     """#;
@@ -251,7 +251,7 @@ async fn parameter() {
     let ctx = data_ctx("DUMMY_HASH");
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import {parameter, report} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {parameter, report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
            let boolParam = parameter("bool");
@@ -264,7 +264,7 @@ async fn parameter() {
            let stringValid = stringParam.asString() == "hello";
 
            if (boolValid && numberValid && stringValid) {
-               report()
+               report(IncidentSeverity.Alert, "Test");
            }
         }
     """#,
@@ -287,4 +287,88 @@ async fn parameter() {
 
     assert!(result.matched);
     assert_eq!(result.incidents.len(), 1);
+}
+
+#[test(tokio::test)]
+async fn incident_report_data_deserialization() {
+    let ctx = data_ctx("DUMMY_HASH");
+    let module = AssemblyScriptModule::with_deps(
+        r#"""
+        import {report, IncidentSeverity, IncidentDataStruct, StringDataValue} from "@mamoru-ai/mamoru-sdk-as/assembly";
+
+        export function main(): void {
+            let dataNested = new IncidentDataStruct();
+            dataNested.addString("string", "nested");
+
+            let data = new IncidentDataStruct();
+
+            data.addNull("null");
+            data.addNumber("number", 42.0);
+            data.addString("string", "hello");
+            data.addBoolean("boolean", true);
+            data.addList("list", [
+                new StringDataValue("first"),
+                new StringDataValue("second"),
+            ]);
+            data.addStruct("struct", dataNested);
+
+
+            report(IncidentSeverity.Alert, "Test", data, "0x0");
+        }
+    """#,
+        &[AS_SDK_PATH],
+    );
+
+    let daemon = test_daemon(&module);
+
+    let mut result = daemon
+        .verify(&ctx)
+        .await
+        .expect("Failed to run Daemon::verify()");
+
+    assert!(result.matched);
+
+    let incident = result.incidents.remove(0);
+
+    assert_eq!(incident.severity, IncidentSeverity::Alert);
+    assert_eq!(incident.message, "Test");
+    assert_eq!(incident.address, "0x0");
+
+    // important to use `BTreeMap` instead of `HashMap` to have stable key ordering for `assert_debug_eq`
+    let data: BTreeMap<_, _> = incident.data.fields().into_iter().collect();
+
+    expect![[r#"
+        {
+            "boolean": Bool(
+                true,
+            ),
+            "list": List(
+                [
+                    String(
+                        "first",
+                    ),
+                    String(
+                        "second",
+                    ),
+                ],
+            ),
+            "null": Null,
+            "number": Number(
+                42.0,
+            ),
+            "string": String(
+                "hello",
+            ),
+            "struct": Struct(
+                IncidentDataStruct {
+                    fields: {
+                        "string": String(
+                            "nested",
+                        ),
+                    },
+                },
+            ),
+        }
+    "#]]
+    .assert_debug_eq(&data);
 }
