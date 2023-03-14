@@ -208,6 +208,10 @@ async fn http() {
         export function main(): void {
            let response = http(HttpMethod.GET, ENDPOINT);
 
+           let _body = response.body();
+           let _headers = response.headers();
+           let _error = response.error();
+
            if (response.status() == 418) {
                report(IncidentSeverity.Alert, "Test");
            }

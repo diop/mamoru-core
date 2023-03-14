@@ -108,12 +108,15 @@ export class HttpResponse {
 
     public headers(): Map<String, String> {
         let headersObj = this.payload.getObj("headers")!.valueOf();
+        let headerKeys = headersObj.keys();
         let headers = new Map<String, String>();
 
-        headersObj.keys().forEach((key) => {
+        for (let i = 0; i < headerKeys.length; ++i) {
+            let key = headerKeys[i];
             let value = headersObj.get(key) as JSON.Str;
+
             headers.set(key, value.valueOf());
-        });
+        }
 
         return headers;
     }
@@ -127,11 +130,11 @@ export class HttpResponse {
             let bodyValue = body.valueOf();
             let array = new Uint8Array(bodyValue.length);
 
-            bodyValue.forEach((val, idx) => {
-                let int = val as JSON.Integer;
+            for (let i = 0; i < array.length; ++i) {
+                let int = bodyValue[i] as JSON.Integer;
 
-                array[idx] = int.valueOf();
-            });
+                array[i] = int.valueOf() as u32;
+            }
 
             return array
         }

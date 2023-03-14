@@ -1,6 +1,6 @@
 {
   "name": "@mamoru-ai/mamoru-sdk-as",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AssemblyScript SDK for Mamoru Daemons",
   "main": "index.js",
   "scripts": {
