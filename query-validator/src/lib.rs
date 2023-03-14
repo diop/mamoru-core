@@ -11,6 +11,7 @@ use mamoru_core::{
 pub enum ChainType {
     Sui,
     Evm,
+    Aptos,
 }
 
 /// Validates an SQL Daemon query against an empty database.
@@ -67,6 +68,10 @@ fn ctx(chain: ChainType) -> BlockchainDataCtx {
             .expect(
                 "BUG: `BlockchainDataCtxBuilder::new().empty(mamoru_evm_types::all_tables)` fails.",
             ),
+
+        ChainType::Aptos => BlockchainDataCtxBuilder::new()
+            .empty(mamoru_aptos_types::all_tables)
+            .expect("BUG: `BlockchainDataCtxBuilder::new().empty(mamoru_aptos_types::all_tables)` fails.")
     }
 }
 
@@ -85,6 +90,13 @@ mod tests {
     fn evm_empty_ctx_does_not_fail() {
         BlockchainDataCtxBuilder::new()
             .empty(mamoru_evm_types::all_tables)
+            .unwrap();
+    }
+
+    #[test]
+    fn aptos_empty_ctx_does_not_fail() {
+        BlockchainDataCtxBuilder::new()
+            .empty(mamoru_aptos_types::all_tables)
             .unwrap();
     }
 

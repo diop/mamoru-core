@@ -7,6 +7,7 @@ use safer_ffi::prelude::*;
 pub enum FfiChainType {
     Sui = 0,
     Evm = 1,
+    Aptos = 2,
 }
 
 #[derive_ReprC]
@@ -21,6 +22,7 @@ impl From<FfiChainType> for ChainType {
         match chain {
             FfiChainType::Sui => Self::Sui,
             FfiChainType::Evm => Self::Evm,
+            FfiChainType::Aptos => Self::Aptos,
         }
     }
 }

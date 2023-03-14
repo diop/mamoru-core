@@ -10,6 +10,7 @@ datafusion = { workspace = true }
 mamoru-core = { path = "../mamoru-core" }
 thiserror = "1.0"
 
+mamoru-aptos-types = { path = "../mamoru-aptos-types" }
 mamoru-evm-types = { path = "../mamoru-evm-types" }
 mamoru-sui-types = { path = "../mamoru-sui-types" }
 

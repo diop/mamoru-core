@@ -6,6 +6,7 @@ members = [
     "query-validator",
     "query-validator-c",
     "mamoru-core",
+    "mamoru-aptos-types",
     "mamoru-sui-types",
     "mamoru-evm-types",
     "mamoru-sniffer",

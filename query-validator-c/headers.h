@@ -29,6 +29,8 @@ typedef uint8_t FfiChainType_t; enum
     FFI_CHAIN_TYPE_SUI = 0,
     /** . */
     FFI_CHAIN_TYPE_EVM = 1,
+    /** . */
+    FFI_CHAIN_TYPE_APTOS = 2,
 }
 #ifdef DOXYGEN
 FfiChainType_t
