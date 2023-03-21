@@ -15,10 +15,13 @@ npm install @mamoru-ai/mamoru-sdk-as
 Here is an example Mamoru Daemon that uses the SDK:
 
 ```typescript
-import { http, HttpMethod, HttpRequest, report, IncidentSeverity, query } from '@mamoru-ai/mamoru-sdk-as/assembly';
+import { http, HttpMethod, report, IncidentSeverity, query } from '@mamoru-ai/mamoru-sdk-as/assembly';
 
 export function main(): void {
-    const response = http(new HttpRequest(HttpMethod.GET, 'https://example.com'));
+    const response = http(
+        HttpMethod.GET,
+        'https://example.com',
+        );
 
     const error = response.error();
 
@@ -33,7 +36,7 @@ export function main(): void {
     }
 
     query('SELECT * FROM transactions').forEach((tx) => {
-        const hash = value.getString!("hash")!.valueOf();
+        const hash = tx.getString!("hash")!.valueOf();
 
         if (hash == "0x0") {
            report(IncidentSeverity.Info, "Hash is 0x0");
