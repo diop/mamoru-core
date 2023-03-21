@@ -4,9 +4,6 @@ use datafusion::arrow::datatypes::DataType;
 #[derive(BlockchainData)]
 #[schema(table_name = "blocks")]
 pub struct Block {
-    #[schema(type = "DataType::UInt64")]
-    pub seq: u64,
-
     #[schema(type = "DataType::Utf8")]
     pub hash: String,
 

@@ -12,15 +12,15 @@ doctest = false
 
 [dependencies]
 async-stream = "0.3"
-base64 = "0.20.0"
+base64 = "0.20"
 chrono = { workspace = true }
 cosmrs = { workspace = true, features = ["grpc"] }
 envy = "0.4"
 futures = "0.3"
-hex = "0.4.3"
+hex = "0.4"
 mamoru-core = { path = "../mamoru-core" }
 prost = "0.11"
-prost-types = "0.11.8"
+prost-types = "0.11"
 serde = { version = "1.0", features = ["derive"] }
 strum = "0.24"
 strum_macros = "0.24"

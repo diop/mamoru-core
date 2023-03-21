@@ -19,6 +19,9 @@ pull-proto-dependencies:
 test:
 	cargo test --all-features --workspace
 
+nextest:
+	cargo nextest run --all-features --workspace
+
 tracing-test:
 	RUST_LOG=warn,mamoru_core=trace,mamoru_sniffer=debug \
 	RUST_LOG_SPAN_EVENTS=close \

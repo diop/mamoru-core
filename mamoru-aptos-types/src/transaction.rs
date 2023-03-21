@@ -7,8 +7,8 @@ pub struct Transaction {
     #[schema(type = "DataType::UInt64")]
     pub seq: u64,
 
-    #[schema(type = "DataType::UInt64")]
-    pub block_seq: u64,
+    #[schema(type = "DataType::Utf8")]
+    pub block_hash: String,
 
     #[schema(type = "DataType::Utf8")]
     pub hash: String,
@@ -31,8 +31,8 @@ pub struct Transaction {
     #[schema(type = "DataType::UInt64")]
     pub expiration_timestamp_secs: u64,
 
-    #[schema(type = "DataType::Utf8")]
-    pub status: String,
+    #[schema(type = "DataType::UInt64")]
+    pub status: u64,
 
     #[schema(type = "DataType::Utf8")]
     pub sender: String,
