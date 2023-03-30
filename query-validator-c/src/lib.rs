@@ -28,12 +28,10 @@ impl From<FfiChainType> for ChainType {
 }
 
 lazy_static! {
-    static ref HANDLE: tokio::runtime::Handle = {
-        let runtime = tokio::runtime::Builder::new_current_thread()
+    static ref RUNTIME: tokio::runtime::Runtime = {
+        tokio::runtime::Builder::new_current_thread()
             .build()
-            .expect("BUG: Failed to init async runtime.");
-
-        runtime.handle().clone()
+            .expect("BUG: Failed to init async runtime.")
     };
 }
 
@@ -42,7 +40,9 @@ fn ffi_validate_sql<'a>(chain: FfiChainType, query: char_p::Ref<'a>) -> FfiValid
     let chain = chain.into();
     let query = query.to_str();
 
-    let result = HANDLE.block_on(async move { validate_sql(chain, query).await });
+    let result = RUNTIME
+        .handle()
+        .block_on(async move { validate_sql(chain, query).await });
 
     let (is_error, message) = match result {
         Ok(_) => (false, "".to_string()),
@@ -63,7 +63,9 @@ fn ffi_validate_assembly_script<'a>(
     let chain = chain.into();
     let bytes = bytes.as_slice();
 
-    let result = HANDLE.block_on(async move { validate_assembly_script(chain, bytes).await });
+    let result = RUNTIME
+        .handle()
+        .block_on(async move { validate_assembly_script(chain, bytes).await });
 
     let (is_error, message) = match result {
         Ok(_) => (false, "".to_string()),
