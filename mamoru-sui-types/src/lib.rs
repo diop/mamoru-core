@@ -16,14 +16,6 @@ pub fn all_tables() -> Result<Vec<TableDef>, ArrowError> {
         CallTrace,
         CallTraceTypeArg,
         CallTraceArg,
-        MoveEvent,
-        PublishEvent,
-        CoinBalanceChangeEvent,
-        EpochChangeEvent,
-        CheckpointEvent,
-        TransferObjectEvent,
-        MutateObjectEvent,
-        DeleteObjectEvent,
-        NewObjectEvent,
+        Event,
     ]
 }
