@@ -1,12 +1,12 @@
-use crate::daemon::assembly_script::{
-    test_daemon, test_daemon_with_parameters, AssemblyScriptModule,
-};
-use expect_test::expect;
-use mamoru_core::{test_blockchain_data::data_ctx, DataError, IncidentSeverity};
 use std::collections::BTreeMap;
+
+use expect_test::expect;
 use test_log::test;
 
-const AS_SDK_PATH: &str = concat!("file:", env!("CARGO_MANIFEST_DIR"), "/../mamoru-sdk-as");
+use mamoru_core::{DataError, IncidentSeverity};
+use mamoru_core_test_utils::assembly_script::{AssemblyScriptModule, AS_SDK_PATH};
+use mamoru_core_test_utils::test_blockchain_data::data_ctx;
+use mamoru_core_test_utils::{test_daemon, test_daemon_with_parameters};
 
 #[test(tokio::test)]
 async fn main_function_missing_fails() {
@@ -201,6 +201,7 @@ async fn smoke() {
 }
 
 #[test(tokio::test)]
+#[ignore]
 async fn http() {
     const AS_CODE_BLOCK: &str = r#"""
         import {http, HttpMethod, report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";

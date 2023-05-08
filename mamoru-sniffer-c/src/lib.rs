@@ -3,7 +3,7 @@ mod ffi_types;
 
 use lazy_static::lazy_static;
 use mamoru_sniffer::{
-    core::{BlockchainDataCtxBuilder, StructValue, Value, ValueData},
+    core::{StructValue, Value, ValueData},
     Sniffer, SnifferConfig,
 };
 use safer_ffi::prelude::*;
@@ -55,50 +55,6 @@ fn sniffer_result_get_sniffer(
     let result = result.into();
 
     result.data.map(repr_c::Box::new)
-}
-
-/// Frees `data` argument.
-#[ffi_export]
-fn sniffer_observe_data(sniffer: &FfiSniffer, data: repr_c::Box<FfiBlockchainDataCtx>) {
-    let sniffer = &sniffer.inner;
-    let data = data.into();
-
-    RUNTIME.block_on(async { sniffer.observe_data(data.inner).await });
-}
-
-#[ffi_export]
-fn new_blockchain_data_ctx_builder() -> repr_c::Box<FfiBlockchainDataCtxBuilder> {
-    let inner = BlockchainDataCtxBuilder::new();
-
-    repr_c::Box::new(FfiBlockchainDataCtxBuilder { inner })
-}
-
-/// Returns `true` is success.
-/// Frees `data` argument.
-#[ffi_export]
-fn blockchain_data_ctx_builder_add_data(
-    builder: &FfiBlockchainDataCtxBuilder,
-    data: repr_c::Box<FfiBlockchainData>,
-) -> bool {
-    let builder = &builder.inner;
-    let data = data.into().inner;
-
-    builder.add_data(data).is_ok()
-}
-
-#[ffi_export]
-fn blockchain_data_ctx_builder_finish(
-    builder: repr_c::Box<FfiBlockchainDataCtxBuilder>,
-    tx_id: char_p::Ref<'_>,
-    tx_hash: char_p::Ref<'_>,
-) -> repr_c::Box<FfiBlockchainDataCtx> {
-    let builder = builder.into().inner;
-    let tx_id = tx_id.to_str().to_string();
-    let tx_hash = tx_hash.to_str().to_string();
-
-    repr_c::Box::new(FfiBlockchainDataCtx {
-        inner: builder.finish(tx_id, tx_hash),
-    })
 }
 
 /// Frees `value` argument.

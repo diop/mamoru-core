@@ -1,14 +1,16 @@
-use crate::validation_chain_tests::{message_client, query_client, retry, sniffer};
+use std::future;
+
 use futures::TryStreamExt;
-use mamoru_core::test_blockchain_data::data_ctx;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use test_log::test;
+
+use mamoru_core_test_utils::test_blockchain_data::data_ctx;
 use mamoru_sniffer::validation_chain::{
     ChainType, DaemonMetadataContent, DaemonMetadataContentQuery, DaemonMetadataType,
     IncidentQueryResponseDto, IncidentSeverity, RegisterDaemonMetadataRequest,
 };
 
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use std::future;
-use test_log::test;
+use crate::validation_chain_tests::{message_client, query_client, retry, sniffer};
 
 #[test(tokio::test)]
 #[ignore]
@@ -55,6 +57,9 @@ async fn register_daemon(chain: ChainType) -> String {
         .register_daemon_metadata(RegisterDaemonMetadataRequest {
             kind: DaemonMetadataType::Sole,
             supported_chains: vec![ChainType::SuiDevnet],
+            title: "test".to_string(),
+            description: "test".to_string(),
+            logo_url: "https://example.com/logo.png".to_string(),
             content: DaemonMetadataContent::Sql {
                 queries: vec![DaemonMetadataContentQuery {
                     query: "SELECT 1 FROM transactions".to_string(),

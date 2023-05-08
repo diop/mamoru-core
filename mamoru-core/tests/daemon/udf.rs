@@ -1,9 +1,9 @@
-use crate::daemon::test_sql_daemon;
-use mamoru_core::{
-    test_blockchain_data::{data_ctx, TEST_ETH_TOPIC},
-    DataError,
-};
 use test_log::test;
+
+use mamoru_core::DataError;
+use mamoru_core_test_utils::test_blockchain_data::{data_ctx, TEST_ETH_TOPIC};
+
+use crate::daemon::test_sql_daemon;
 
 #[test(tokio::test)]
 async fn uint64_type_conversion() -> Result<(), DataError> {

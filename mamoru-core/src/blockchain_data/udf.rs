@@ -1,4 +1,5 @@
-use crate::blockchain_data::value::Value;
+use std::sync::Arc;
+
 use datafusion::{
     arrow::{
         array::{ArrayRef, BinaryArray, BooleanArray, StringArray, UInt64Array},
@@ -8,7 +9,8 @@ use datafusion::{
     logical_expr::{create_udf, ScalarUDF, Volatility},
     physical_plan::functions::make_scalar_function,
 };
-use std::sync::Arc;
+
+use crate::blockchain_data::value::Value;
 
 macro_rules! define_as_ty_udf {
     ($f:ident, $ret:expr, $arr:ty, $code:tt) => {
@@ -85,7 +87,7 @@ pub(crate) fn struct_field() -> ScalarUDF {
                     let value = Value::from_slice(data).ok()?;
                     let field = &value.as_struct()?.fields.get(field)?;
 
-                    field.serialize().ok()
+                    Some(field.serialize())
                 }
                 _ => None,
             })

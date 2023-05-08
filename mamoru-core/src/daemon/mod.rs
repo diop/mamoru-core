@@ -1,13 +1,14 @@
-mod assembly_script;
-pub mod incident;
-pub mod sql;
+use std::{collections::HashMap, fmt::Debug};
 
+use crate::blockchain_data::BlockchainData;
 use crate::{
     daemon::{assembly_script::AssemblyScriptExecutor, incident::Incident, sql::SqlExecutor},
-    BlockchainDataCtx, DataError, IncidentData,
+    BlockchainCtx, DataError, IncidentData,
 };
-use async_trait::async_trait;
-use std::{collections::HashMap, fmt::Debug};
+
+pub mod assembly_script;
+pub mod incident;
+pub mod sql;
 
 #[derive(Debug)]
 pub struct VerifyCtx {
@@ -21,18 +22,17 @@ pub struct VerifyCtx {
 /// The parameters that are passed to Daemon.
 pub type DaemonParameters = HashMap<String, String>;
 
-/// An entity that can search Incidents in the [`BlockchainDataCtx`].
-#[async_trait]
-pub trait Executor: Send + Sync + Debug {
-    /// Executes the given daemon.
-    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError>;
+#[derive(Debug)]
+pub enum Executor {
+    Sql(SqlExecutor),
+    AssemblyScript(AssemblyScriptExecutor),
 }
 
 /// The Daemon entity.
 #[derive(Debug)]
 pub struct Daemon {
     id: String,
-    executor: Box<dyn Executor>,
+    executor: Executor,
 }
 
 impl Daemon {
@@ -41,7 +41,7 @@ impl Daemon {
         expression: &str,
         incident_data: IncidentData,
     ) -> Result<Self, DataError> {
-        let executor = Box::new(SqlExecutor::new(expression, incident_data)?);
+        let executor = Executor::Sql(SqlExecutor::new(expression, incident_data)?);
 
         Ok(Self::new(id, executor))
     }
@@ -51,12 +51,12 @@ impl Daemon {
         wasm: impl AsRef<[u8]>,
         parameters: DaemonParameters,
     ) -> Result<Self, DataError> {
-        let executor = Box::new(AssemblyScriptExecutor::new(wasm, parameters)?);
+        let executor = Executor::AssemblyScript(AssemblyScriptExecutor::new(wasm, parameters)?);
 
         Ok(Self::new(id, executor))
     }
 
-    pub fn new(id: String, executor: Box<dyn Executor>) -> Self {
+    pub fn new(id: String, executor: Executor) -> Self {
         Self { id, executor }
     }
 
@@ -66,8 +66,14 @@ impl Daemon {
 
     /// Executes the given daemon.
     #[tracing::instrument(skip(ctx, self), fields(daemon_id = self.id(), tx_hash = ctx.tx_hash(), level = "trace"))]
-    pub async fn verify(&self, ctx: &BlockchainDataCtx) -> Result<VerifyCtx, DataError> {
-        let incidents = self.executor.execute(ctx).await?;
+    pub async fn verify<T: BlockchainCtx>(
+        &self,
+        ctx: &BlockchainData<T>,
+    ) -> Result<VerifyCtx, DataError> {
+        let incidents = match &self.executor {
+            Executor::Sql(sql) => sql.execute(ctx).await?,
+            Executor::AssemblyScript(ass) => ass.execute(ctx).await?,
+        };
 
         Ok(VerifyCtx {
             matched: !incidents.is_empty(),

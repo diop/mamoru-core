@@ -7,12 +7,12 @@ edition = "2021"
 [dependencies]
 chrono = { workspace = true }
 datafusion = { workspace = true }
-mamoru-core = { path = "../mamoru-core" }
-thiserror = "1.0"
 
-mamoru-aptos-types = { path = "../mamoru-aptos-types" }
-mamoru-evm-types = { path = "../mamoru-evm-types" }
-mamoru-sui-types = { path = "../mamoru-sui-types" }
+mamoru-aptos-types = { path = "../blockchain-types/mamoru-aptos-types" }
+mamoru-core = { path = "../mamoru-core" }
+mamoru-evm-types = { path = "../blockchain-types/mamoru-evm-types" }
+mamoru-sui-types = { path = "../blockchain-types/mamoru-sui-types" }
+thiserror = "1.0"
 
 [dev-dependencies]
 tokio = { workspace = true }

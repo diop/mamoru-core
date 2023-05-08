@@ -32,7 +32,7 @@ pub enum DataError {
     WasmCompile(CompileError),
 
     #[error("Failed to initialize WASM module: {0}")]
-    WasmInit(InstantiationError),
+    WasmInit(Box<InstantiationError>),
 
     #[error("Failed to get WASM module export \"{export}\": {source}")]
     WasmExport { source: ExportError, export: String },

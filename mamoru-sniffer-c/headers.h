@@ -14,9 +14,28 @@
 extern "C" {
 #endif
 
-typedef struct FfiTransactionBatch FfiTransactionBatch_t;
+typedef struct FfiEvmBlockchainDataBuilder FfiEvmBlockchainDataBuilder_t;
 
-FfiTransactionBatch_t * new_transaction_batch (void);
+FfiEvmBlockchainDataBuilder_t * new_evm_blockchain_data_builder (void);
+
+typedef struct FfiEvmBlockchainDataCtx FfiEvmBlockchainDataCtx_t;
+
+/** \brief
+ *  Frees `builder` argument.
+ */
+FfiEvmBlockchainDataCtx_t * evm_blockchain_data_builder_finish (
+    FfiEvmBlockchainDataBuilder_t * builder,
+    char const * tx_id,
+    char const * tx_hash);
+
+typedef struct FfiSniffer FfiSniffer_t;
+
+/** \brief
+ *  Frees `data` argument.
+ */
+void evm_sniffer_observe_data (
+    FfiSniffer_t const * sniffer,
+    FfiEvmBlockchainDataCtx_t * data);
 
 
 #include <stddef.h>
@@ -49,8 +68,8 @@ typedef struct slice_ref_uint8 {
 
 } slice_ref_uint8_t;
 
-void transaction_batch_append (
-    FfiTransactionBatch_t * batch,
+void evm_transaction_append (
+    FfiEvmBlockchainDataBuilder_t * builder,
     uint32_t tx_index,
     char const * tx_hash,
     uint64_t block_index,
@@ -67,20 +86,8 @@ void transaction_batch_append (
     slice_ref_uint8_t input,
     double size);
 
-typedef struct FfiBlockchainData FfiBlockchainData_t;
-
-/** \brief
- *  Frees `object` argument.
- */
-FfiBlockchainData_t * transaction_batch_finish (
-    FfiTransactionBatch_t * object);
-
-typedef struct FfiCallTraceBatch FfiCallTraceBatch_t;
-
-FfiCallTraceBatch_t * new_call_trace_batch (void);
-
-void call_trace_batch_append (
-    FfiCallTraceBatch_t * batch,
+void evm_call_trace_append (
+    FfiEvmBlockchainDataBuilder_t * builder,
     uint32_t seq,
     uint32_t depth,
     uint32_t tx_index,
@@ -93,18 +100,8 @@ void call_trace_batch_append (
     uint64_t gas_used,
     slice_ref_uint8_t input);
 
-/** \brief
- *  Frees `object` argument.
- */
-FfiBlockchainData_t * call_trace_batch_finish (
-    FfiCallTraceBatch_t * object);
-
-typedef struct FfiBlockBatch FfiBlockBatch_t;
-
-FfiBlockBatch_t * new_block_batch (void);
-
-void block_batch_append (
-    FfiBlockBatch_t * batch,
+void evm_block_set (
+    FfiEvmBlockchainDataBuilder_t * builder,
     uint64_t block_index,
     char const * hash,
     char const * parent_hash,
@@ -119,18 +116,8 @@ void block_batch_append (
     uint64_t gas_used,
     uint64_t gas_limit);
 
-/** \brief
- *  Frees `object` argument.
- */
-FfiBlockchainData_t * block_batch_finish (
-    FfiBlockBatch_t * object);
-
-typedef struct FfiEventBatch FfiEventBatch_t;
-
-FfiEventBatch_t * new_event_batch (void);
-
-void event_batch_append (
-    FfiEventBatch_t * batch,
+void evm_event_append (
+    FfiEvmBlockchainDataBuilder_t * builder,
     uint32_t index,
     char const * address,
     uint64_t block_number,
@@ -144,12 +131,6 @@ void event_batch_append (
     slice_ref_uint8_t topic4,
     slice_ref_uint8_t data);
 
-/** \brief
- *  Frees `object` argument.
- */
-FfiBlockchainData_t * event_batch_finish (
-    FfiEventBatch_t * object);
-
 typedef struct FfiSnifferResult FfiSnifferResult_t;
 
 FfiSnifferResult_t * new_sniffer (void);
@@ -160,43 +141,12 @@ FfiSnifferResult_t * new_sniffer (void);
 char * sniffer_result_get_error_message (
     FfiSnifferResult_t const * result);
 
-typedef struct FfiSniffer FfiSniffer_t;
-
 /** \brief
  *  Returns a pointer to `FfiSniffer` or NULL.
  *  Frees `result` arguments, so be sure to call `sniffer_result_get_error_message` to get an error message.
  */
 FfiSniffer_t * sniffer_result_get_sniffer (
     FfiSnifferResult_t * result);
-
-typedef struct FfiBlockchainDataCtx FfiBlockchainDataCtx_t;
-
-/** \brief
- *  Frees `data` argument.
- */
-void sniffer_observe_data (
-    FfiSniffer_t const * sniffer,
-    FfiBlockchainDataCtx_t * data);
-
-typedef struct FfiBlockchainDataCtxBuilder FfiBlockchainDataCtxBuilder_t;
-
-FfiBlockchainDataCtxBuilder_t * new_blockchain_data_ctx_builder (void);
-
-
-#include <stdbool.h>
-
-/** \brief
- *  Returns `true` is success.
- *  Frees `data` argument.
- */
-bool blockchain_data_ctx_builder_add_data (
-    FfiBlockchainDataCtxBuilder_t const * builder,
-    FfiBlockchainData_t * data);
-
-FfiBlockchainDataCtx_t * blockchain_data_ctx_builder_finish (
-    FfiBlockchainDataCtxBuilder_t * builder,
-    char const * tx_id,
-    char const * tx_hash);
 
 typedef struct FfiValue FfiValue_t;
 
@@ -207,6 +157,9 @@ typedef struct FfiValueData FfiValueData_t;
  */
 FfiValueData_t * new_value_data (
     FfiValue_t * value);
+
+
+#include <stdbool.h>
 
 FfiValue_t * new_value_bool (
     bool data);

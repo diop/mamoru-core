@@ -1,11 +1,5 @@
-use crate::{
-    daemon::{
-        incident::{IncidentDataStruct, IncidentSeverity},
-        Executor, Incident,
-    },
-    BlockchainDataCtx, DataError,
-};
-use async_trait::async_trait;
+use datafusion::arrow::record_batch::RecordBatch;
+use datafusion::execution::context::SessionState;
 use datafusion::{
     arrow::json::writer::record_batches_to_json_rows,
     dataframe::DataFrame,
@@ -15,6 +9,15 @@ use datafusion::{
     },
 };
 use serde_json::{Map, Value};
+
+use crate::blockchain_data::BlockchainData;
+use crate::{
+    daemon::{
+        incident::{IncidentDataStruct, IncidentSeverity},
+        Incident,
+    },
+    BlockchainCtx, DataError,
+};
 
 pub(crate) type SqlQueryOutputs = Vec<Map<String, Value>>;
 
@@ -41,25 +44,23 @@ impl SqlExecutor {
             incident_data,
         })
     }
-}
 
-#[async_trait]
-impl Executor for SqlExecutor {
-    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
-        let data = self.query.run(ctx).await?;
+    pub async fn execute<T: BlockchainCtx>(
+        &self,
+        ctx: &BlockchainData<T>,
+    ) -> Result<Vec<Incident>, DataError> {
+        let matches = self.query.matches(ctx.session().state()).await?;
 
-        let mut incidents = vec![];
-
-        if !data.is_empty() {
-            incidents.push(Incident {
+        if matches {
+            Ok(vec![Incident {
                 severity: self.incident_data.severity.clone(),
                 message: self.incident_data.message.clone(),
                 address: "".to_string(),
                 data: IncidentDataStruct::new(),
-            });
+            }])
+        } else {
+            Ok(vec![])
         }
-
-        Ok(incidents)
     }
 }
 
@@ -77,9 +78,21 @@ impl SqlQuery {
 
     /// Executes the given query against the data context.
     /// Returns json-serializable rows.
-    pub(crate) async fn run(&self, ctx: &BlockchainDataCtx) -> Result<SqlQueryOutputs, DataError> {
-        let state = ctx.session().state();
+    pub(crate) async fn run(&self, state: SessionState) -> Result<SqlQueryOutputs, DataError> {
+        let data = self.query(state).await?;
+        let list = record_batches_to_json_rows(&data[..]).map_err(DataError::RecordBatchToJson)?;
 
+        Ok(list)
+    }
+
+    pub(crate) async fn matches(&self, state: SessionState) -> Result<bool, DataError> {
+        let data = self.query(state).await?;
+        let matches = data.iter().any(|b| b.num_rows() > 0);
+
+        Ok(matches)
+    }
+
+    async fn query(&self, state: SessionState) -> Result<Vec<RecordBatch>, DataError> {
         let plan = state
             .statement_to_plan(self.statement.clone())
             .await
@@ -90,9 +103,7 @@ impl SqlQuery {
             .await
             .map_err(DataError::ExecuteQuery)?;
 
-        let list = record_batches_to_json_rows(&data[..]).map_err(DataError::RecordBatchToJson)?;
-
-        Ok(list)
+        Ok(data)
     }
 
     /// Extracts query statements only, as we don't want

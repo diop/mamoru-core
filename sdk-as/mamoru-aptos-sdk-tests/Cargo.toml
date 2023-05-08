@@ -1,0 +1,17 @@
+[package]
+name = "mamoru-aptos-sdk-tests"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+env_logger = "0.10"
+mamoru-core = { path = "../../mamoru-core", features = ["testing"] }
+mamoru-core-test-utils = { path = "../../mamoru-core-test-utils" }
+mamoru-aptos-types = { path = "../../blockchain-types/mamoru-aptos-types" }
+test-log = { version = "0.2", features = ["trace"] }
+tokio = { workspace = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }

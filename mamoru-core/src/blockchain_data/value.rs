@@ -1,17 +1,40 @@
-use crate::ValueError;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::error;
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::blockchain_data::serialize::{deserialize_data, serialize_data};
+use crate::ValueError;
 
 /// Holds serialized [`Value`]
+#[derive(Clone)]
 pub struct ValueData {
     data: Vec<u8>,
+}
+
+impl Serialize for ValueData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_bytes(&self.data)
+    }
+}
+
+impl<'de> Deserialize<'de> for ValueData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = Vec::<u8>::deserialize(deserializer)?;
+
+        Ok(Self { data: bytes })
+    }
 }
 
 impl ValueData {
     pub fn new(value: Value) -> Option<Self> {
         Some(Self {
-            data: value.serialize().ok()?,
+            data: value.serialize(),
         })
     }
 }
@@ -26,24 +49,25 @@ impl AsRef<[u8]> for ValueData {
 /// The end user can work with it via UDFs.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Value {
+    #[serde(rename = "b")]
     Bool(bool),
+    #[serde(rename = "u64")]
     U64(u64),
+    #[serde(rename = "s")]
     String(String),
+    #[serde(rename = "l")]
     List(Vec<Value>),
+    #[serde(rename = "st")]
     Struct(StructValue),
 }
 
 impl Value {
-    pub(crate) fn serialize(&self) -> Result<Vec<u8>, ValueError> {
-        bincode::serialize(self).map_err(|err| {
-            error!(error = ?err, value = ?self, "Failed to serialize `Value`.");
-
-            ValueError::Serialize(Box::new(err))
-        })
+    pub(crate) fn serialize(&self) -> Vec<u8> {
+        serialize_data(self)
     }
 
     pub(crate) fn from_slice(data: &[u8]) -> Result<Self, ValueError> {
-        bincode::deserialize(data).map_err(|err| ValueError::Deserialize(Box::new(err)))
+        deserialize_data(data).map_err(|err| ValueError::Deserialize(Box::new(err)))
     }
 }
 

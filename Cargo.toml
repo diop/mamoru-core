@@ -2,21 +2,25 @@
 members = [
     "blockchain-data-derive",
     "blockchain-data-macro",
+    "blockchain-types/mamoru-aptos-types",
+    "blockchain-types/mamoru-evm-types",
+    "blockchain-types/mamoru-sui-types",
     "cosmos-account-generator",
-    "query-validator",
-    "query-validator-c",
     "mamoru-core",
-    "mamoru-aptos-types",
-    "mamoru-sui-types",
-    "mamoru-evm-types",
+    "mamoru-core-test-utils",
     "mamoru-sniffer",
     "mamoru-sniffer-c",
+    "query-validator",
+    "query-validator-c",
+    "sdk-as/mamoru-aptos-sdk-tests",
+    "sdk-as/mamoru-evm-sdk-tests",
+    "sdk-as/mamoru-sui-sdk-tests",
 ]
 
 [workspace.dependencies]
 # Use custom `cosmrs` due to breaking dependency with `sui` integration.
 # See https://github.com/Mamoru-Foundation/cosmos-rust/commit/61b33b3ec70200c823a8d1ab2f38868dc67469fd
 cosmrs = { git = "https://github.com/Mamoru-Foundation/cosmos-rust.git", rev = "8c971b29" }
-datafusion = { version = "19.0.0", default-features = false, features = ["crypto_expressions", "unicode_expressions"] }
+datafusion = { version = "23.0.0", default-features = false, features = ["crypto_expressions", "unicode_expressions"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

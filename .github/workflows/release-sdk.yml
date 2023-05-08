@@ -1,0 +1,31 @@
+name: "Release SDK for AssemblyScript"
+on:
+  workflow_dispatch:
+
+inputs:
+  package:
+    description: "The package to release"
+    required: true
+    default: "mamoru-sdk-as"
+    type: choice
+    choices:
+      - mamoru-sdk-as
+      - mamoru-sui-sdk-as
+      - mamoru-aptos-sdk-as
+      - mamoru-evm-sdk-as
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '19.x'
+          registry-url: 'https://registry.npmjs.org'
+      - run: |
+          npm install --force
+          npm publish --access=public
+        working-directory: ./as-sdk/${{ inputs.package }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

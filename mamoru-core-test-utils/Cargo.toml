@@ -1,0 +1,18 @@
+[package]
+name = "mamoru-core-test-utils"
+version = "0.1.0"
+edition = "2021"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+blockchain-data-macro = { path = "../blockchain-data-macro" }
+chrono = { workspace = true }
+datafusion = { workspace = true }
+env_logger = "0.10"
+hex = "0.4"
+mamoru-core = { path = "../mamoru-core" }
+maplit = "1"
+serde = { version = "1.0", features = ["derive"] }
+tempfile = "3.5.0"
+test-log = "0.2.11"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }

@@ -1,4 +1,4 @@
-/// This macro automatically implements [`mamoru_core::BlockchainData`] trait:
+/// This macro automatically implements [`mamoru_core::BlockchainTableItem`] trait:
 /// - puts a virtual table name
 /// - generates Apache Arrow Schema
 /// - generates a code to convert a list of the struct instances to RecordBatch
@@ -98,7 +98,7 @@ impl DeriveImpl {
                 }
             }
 
-            impl #mamoru_path::BlockchainData for #batch_struct_name {
+            impl #mamoru_path::BlockchainTableItem for #batch_struct_name {
                 fn table_name(&self) -> &'static str {
                     #table_name
                 }

@@ -1,10 +1,12 @@
-use crate::validation_chain_tests::message_client;
+use test_log::test;
+
 use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 use mamoru_sniffer::validation_chain::{
     BlockId, ChainType, DaemonMetadataContent, DaemonMetadataContentQuery, DaemonMetadataType,
     IncidentReport, IncidentSeverity, IncidentSource, RegisterDaemonMetadataRequest, TransactionId,
 };
-use test_log::test;
+
+use crate::validation_chain_tests::message_client;
 
 #[test(tokio::test)]
 #[ignore]
@@ -20,6 +22,9 @@ async fn smoke() {
         .register_daemon_metadata(RegisterDaemonMetadataRequest {
             kind: DaemonMetadataType::Sole,
             supported_chains: vec![ChainType::SuiDevnet],
+            title: "test".to_string(),
+            description: "test".to_string(),
+            logo_url: "https://example.com/logo.png".to_string(),
             content: DaemonMetadataContent::Sql {
                 queries: vec![DaemonMetadataContentQuery {
                     query: "SELECT 1 FROM transactions".to_string(),

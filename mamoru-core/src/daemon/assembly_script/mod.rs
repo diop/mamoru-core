@@ -1,20 +1,20 @@
-mod imports;
-
-use crate::{
-    daemon::{DaemonParameters, Executor, Incident},
-    BlockchainDataCtx, DataError,
-};
-use as_ffi_bindings::{Read, StringPtr, Write};
-use async_trait::async_trait;
 use std::{
     fmt::{Debug, Formatter},
     sync::{mpsc, Arc},
 };
+
 use tracing::Level;
-use wasmer::{
-    AsStoreMut, AsStoreRef, Engine, FunctionEnv, Instance, Memory, Module, Store, TypedFunction,
-    WasmTypeList,
+pub use wasmer::{imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports};
+use wasmer::{Engine, Extern, Instance, Module, Store, TypedFunction};
+
+use crate::{
+    assembly_script::env::{get_typed_function, WasmEnv},
+    daemon::{DaemonParameters, Incident},
+    BlockchainCtx, BlockchainData, CtxImportFn, DataError,
 };
+
+mod env;
+mod imports;
 
 /// Maximum incident reports by a single run.
 const MAX_INCIDENTS: usize = 128;
@@ -44,9 +44,23 @@ pub struct AssemblyScriptExecutor {
     parameters: Arc<DaemonParameters>,
 }
 
-#[async_trait]
-impl Executor for AssemblyScriptExecutor {
-    async fn execute(&self, ctx: &BlockchainDataCtx) -> Result<Vec<Incident>, DataError> {
+impl AssemblyScriptExecutor {
+    pub fn new(wasm: impl AsRef<[u8]>, parameters: DaemonParameters) -> Result<Self, DataError> {
+        let store = Store::default();
+        let engine = store.engine().clone();
+        let module = Module::from_binary(&engine, wasm.as_ref()).map_err(DataError::WasmCompile)?;
+
+        Ok(Self {
+            module,
+            engine,
+            parameters: Arc::new(parameters),
+        })
+    }
+
+    pub async fn execute<T: BlockchainCtx>(
+        &self,
+        ctx: &BlockchainData<T>,
+    ) -> Result<Vec<Incident>, DataError> {
         let (mut store, entrypoint, incidents_rx) = self.prepare_vm(ctx)?;
 
         tokio::task::spawn_blocking(move || {
@@ -63,28 +77,14 @@ impl Executor for AssemblyScriptExecutor {
 
         Ok(incidents)
     }
-}
-
-impl AssemblyScriptExecutor {
-    pub fn new(wasm: impl AsRef<[u8]>, parameters: DaemonParameters) -> Result<Self, DataError> {
-        let store = Store::default();
-        let engine = store.engine().clone();
-        let module = Module::from_binary(&engine, wasm.as_ref()).map_err(DataError::WasmCompile)?;
-
-        Ok(Self {
-            module,
-            engine,
-            parameters: Arc::new(parameters),
-        })
-    }
 
     /// Creates new environment for WASM execution.
     #[tracing::instrument(skip(ctx, self), level = "trace")]
-    fn prepare_vm(
+    fn prepare_vm<T: BlockchainCtx>(
         &self,
-        ctx: &BlockchainDataCtx,
+        ctx: &BlockchainData<T>,
     ) -> Result<(Store, Entrypoint, mpsc::Receiver<Incident>), DataError> {
-        let mut store = Store::new(&self.engine);
+        let mut store = Store::new(self.engine.clone());
 
         let (tx, rx) = mpsc::sync_channel::<Incident>(MAX_INCIDENTS);
         let env = FunctionEnv::new(
@@ -97,9 +97,49 @@ impl AssemblyScriptExecutor {
             },
         );
 
-        let imports = imports::all(&mut store, &env);
-        let instance =
-            Instance::new(&mut store, &self.module, &imports).map_err(DataError::WasmInit)?;
+        let mut imports = imports::all::<T>(&mut store, &env);
+
+        let blockchain_module = T::module();
+        let blockchain_imports = T::imports();
+
+        imports.extend(blockchain_imports.into_iter().map(|(func_name, func)| {
+            let wasm_func = Extern::Function(match func {
+                CtxImportFn::NoArgs(func) => Function::new_typed_with_env(
+                    &mut store,
+                    &env,
+                    move |mut ctx: FunctionEnvMut<WasmEnv<T>>| {
+                        let value = func(ctx.data().data_ctx.data());
+                        let ptr = WasmEnv::alloc_slice(&mut ctx, &value)?;
+
+                        Ok::<u64, wasmer::RuntimeError>(ptr)
+                    },
+                ),
+                CtxImportFn::ById(func) => Function::new_typed_with_env(
+                    &mut store,
+                    &env,
+                    move |mut ctx: FunctionEnvMut<WasmEnv<T>>, id: u64| {
+                        let data = ctx.data().data_ctx.clone();
+                        let value = func(data.data(), id).map_err(|err| {
+                            wasmer::RuntimeError::new(format!(
+                                "error calling blockchain import {}: {}",
+                                func_name, err
+                            ))
+                        })?;
+                        let ptr = WasmEnv::alloc_slice(&mut ctx, value)?;
+
+                        Ok::<u64, wasmer::RuntimeError>(ptr)
+                    },
+                ),
+            });
+
+            (
+                (blockchain_module.to_string(), func_name.to_string()),
+                wasm_func,
+            )
+        }));
+
+        let instance = Instance::new(&mut store, &self.module, &imports)
+            .map_err(|err| DataError::WasmInit(Box::new(err)))?;
 
         WasmEnv::init_bindings_env(&env, &mut store, &instance)?;
 
@@ -107,100 +147,6 @@ impl AssemblyScriptExecutor {
 
         Ok((store, entrypoint, rx))
     }
-}
-
-/// The context available to all exported host functions.
-pub(crate) struct WasmEnv {
-    bindings_env: as_ffi_bindings::Env,
-    data_ctx: BlockchainDataCtx,
-    incidents_tx: mpsc::SyncSender<Incident>,
-    parameters: Arc<DaemonParameters>,
-}
-
-impl WasmEnv {
-    /// Imports WASM memory and AssemblyScript's GC functions.
-    fn init_bindings_env(
-        env: &FunctionEnv<Self>,
-        store: &mut Store,
-        instance: &Instance,
-    ) -> Result<(), DataError> {
-        let memory = get_memory(instance, "memory")?;
-
-        let asc_fn_new = get_typed_function(instance, store, "__new")?;
-        let asc_fn_pin = get_typed_function(instance, store, "__pin")?;
-        let asc_fn_unpin = get_typed_function(instance, store, "__unpin")?;
-        let asc_fn_collect = get_typed_function(instance, store, "__collect")?;
-
-        env.as_mut(store).bindings_env.init_with(
-            Some(memory),
-            Some(asc_fn_new),
-            Some(asc_fn_pin),
-            Some(asc_fn_unpin),
-            Some(asc_fn_collect),
-        );
-
-        Ok(())
-    }
-
-    fn memory(&self) -> &Memory {
-        self.bindings_env
-            .memory
-            .as_ref()
-            .expect("BUG: Memory is not initialized.")
-    }
-
-    fn read_string_ptr(
-        &self,
-        ptr: &StringPtr,
-        store: &impl AsStoreRef,
-    ) -> Result<String, wasmer::RuntimeError> {
-        let value = ptr
-            .read(self.memory(), store)
-            .map_err(|e| wasmer::RuntimeError::new(e.to_string()))?;
-
-        Ok(value)
-    }
-
-    fn alloc_string_ptr(
-        env: as_ffi_bindings::Env,
-        value: String,
-        store: &mut impl AsStoreMut,
-    ) -> Result<StringPtr, wasmer::RuntimeError> {
-        let ptr = StringPtr::alloc(&value, &env, store)
-            .map_err(|e| wasmer::RuntimeError::new(e.to_string()))?;
-
-        Ok(*ptr)
-    }
-}
-
-fn get_memory(instance: &Instance, name: &str) -> Result<Memory, DataError> {
-    let memory = instance
-        .exports
-        .get_memory(name)
-        .map_err(|source| DataError::WasmExport {
-            source,
-            export: name.to_string(),
-        })?;
-
-    Ok(memory.clone())
-}
-
-fn get_typed_function<Args, Rets>(
-    instance: &Instance,
-    store: &impl AsStoreRef,
-    name: &str,
-) -> Result<TypedFunction<Args, Rets>, DataError>
-where
-    Args: WasmTypeList,
-    Rets: WasmTypeList,
-{
-    instance
-        .exports
-        .get_typed_function(store, name)
-        .map_err(|source| DataError::WasmExport {
-            source,
-            export: name.to_string(),
-        })
 }
 
 impl Debug for AssemblyScriptExecutor {

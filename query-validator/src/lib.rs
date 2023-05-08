@@ -1,10 +1,13 @@
-mod error;
 pub use error::*;
-
+use mamoru_aptos_types::AptosCtx;
 use mamoru_core::{
-    BlockchainDataCtx, BlockchainDataCtxBuilder, Daemon, DaemonParameters, DataError, IncidentData,
-    IncidentSeverity,
+    BlockchainCtx, BlockchainData, BlockchainDataBuilder, Daemon, DaemonParameters, DataError,
+    IncidentData, IncidentSeverity,
 };
+use mamoru_evm_types::EvmCtx;
+use mamoru_sui_types::SuiCtx;
+
+mod error;
 
 /// Represents possible blockchains as each one has different schema
 #[derive(Debug)]
@@ -16,9 +19,26 @@ pub enum ChainType {
 
 /// Validates an SQL Daemon query against an empty database.
 pub async fn validate_sql(chain: ChainType, query: &str) -> Result<(), ValidateError> {
-    let ctx = ctx(chain);
-    let daemon = sql_validation_daemon(query)?;
-    let result = daemon.verify(&ctx).await?;
+    let result = match chain {
+        ChainType::Sui => {
+            let ctx = empty_ctx::<SuiCtx>();
+            let daemon = sql_validation_daemon(query)?;
+
+            daemon.verify(&ctx).await?
+        }
+        ChainType::Evm => {
+            let ctx = empty_ctx::<EvmCtx>();
+            let daemon = sql_validation_daemon(query)?;
+
+            daemon.verify(&ctx).await?
+        }
+        ChainType::Aptos => {
+            let ctx = empty_ctx::<AptosCtx>();
+            let daemon = sql_validation_daemon(query)?;
+
+            daemon.verify(&ctx).await?
+        }
+    };
 
     if result.matched {
         return Err(ValidateError::MatchesEmptyDatabase);
@@ -29,10 +49,26 @@ pub async fn validate_sql(chain: ChainType, query: &str) -> Result<(), ValidateE
 
 /// Validates a AssemblyScript Daemon against an empty database.
 pub async fn validate_assembly_script(chain: ChainType, bytes: &[u8]) -> Result<(), ValidateError> {
-    let ctx = ctx(chain);
-    let daemon = assembly_script_validation_daemon(bytes)?;
-    let result = daemon.verify(&ctx).await?;
+    let result = match chain {
+        ChainType::Sui => {
+            let ctx = empty_ctx::<SuiCtx>();
+            let daemon = assembly_script_validation_daemon(bytes)?;
 
+            daemon.verify(&ctx).await?
+        }
+        ChainType::Evm => {
+            let ctx = empty_ctx::<EvmCtx>();
+            let daemon = assembly_script_validation_daemon(bytes)?;
+
+            daemon.verify(&ctx).await?
+        }
+        ChainType::Aptos => {
+            let ctx = empty_ctx::<AptosCtx>();
+            let daemon = assembly_script_validation_daemon(bytes)?;
+
+            daemon.verify(&ctx).await?
+        }
+    };
     if result.matched {
         return Err(ValidateError::MatchesEmptyDatabase);
     }
@@ -55,49 +91,38 @@ fn assembly_script_validation_daemon(bytes: &[u8]) -> Result<Daemon, DataError> 
     Daemon::new_assembly_script("WASM_VALIDATE".to_string(), bytes, DaemonParameters::new())
 }
 
-fn ctx(chain: ChainType) -> BlockchainDataCtx {
-    match chain {
-        ChainType::Sui => BlockchainDataCtxBuilder::new()
-            .empty(mamoru_sui_types::all_tables)
-            .expect(
-                "BUG: `BlockchainDataCtxBuilder::new().empty(mamoru_sui_types::all_tables)` fails.",
-            ),
+const EMPTY_CTX: &str = "EMPTY_CTX";
 
-        ChainType::Evm => BlockchainDataCtxBuilder::new()
-            .empty(mamoru_evm_types::all_tables)
-            .expect(
-                "BUG: `BlockchainDataCtxBuilder::new().empty(mamoru_evm_types::all_tables)` fails.",
-            ),
-
-        ChainType::Aptos => BlockchainDataCtxBuilder::new()
-            .empty(mamoru_aptos_types::all_tables)
-            .expect("BUG: `BlockchainDataCtxBuilder::new().empty(mamoru_aptos_types::all_tables)` fails.")
-    }
+fn empty_ctx<T: BlockchainCtx>() -> BlockchainData<T> {
+    BlockchainDataBuilder::<T>::new()
+        .build(EMPTY_CTX, EMPTY_CTX)
+        .unwrap_or_else(|_| {
+            panic!(
+                "BUG: `ChainCtxBuilder::<{}>::new().build` fails.",
+                std::any::type_name::<T>(),
+            )
+        })
 }
 
 #[cfg(test)]
 mod tests {
+    use mamoru_evm_types::EvmCtx;
+
     use super::*;
 
     #[test]
     fn sui_empty_ctx_does_not_fail() {
-        BlockchainDataCtxBuilder::new()
-            .empty(mamoru_sui_types::all_tables)
-            .unwrap();
+        empty_ctx::<SuiCtx>();
     }
 
     #[test]
     fn evm_empty_ctx_does_not_fail() {
-        BlockchainDataCtxBuilder::new()
-            .empty(mamoru_evm_types::all_tables)
-            .unwrap();
+        empty_ctx::<EvmCtx>();
     }
 
     #[test]
     fn aptos_empty_ctx_does_not_fail() {
-        BlockchainDataCtxBuilder::new()
-            .empty(mamoru_aptos_types::all_tables)
-            .unwrap();
+        empty_ctx::<AptosCtx>();
     }
 
     #[tokio::test]

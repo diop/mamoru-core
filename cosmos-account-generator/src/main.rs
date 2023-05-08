@@ -1,9 +1,12 @@
+use std::error::Error;
+
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use cosmrs::{
     bip32::{Mnemonic, XPrv},
     crypto::secp256k1,
 };
 use rand_core::OsRng;
-use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Generate random Mnemonic using the default language (English)
@@ -18,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Address: {}", public_key.account_id("cosmos")?);
     println!("Pub key: {}", public_key.to_string());
-    println!("Private key (base64): {}", base64::encode(xprv.to_bytes()));
+    println!("Private key (base64): {}", STANDARD.encode(xprv.to_bytes()));
     println!("Mnemonic: {}", mnemonic.phrase());
 
     Ok(())

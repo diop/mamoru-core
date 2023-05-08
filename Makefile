@@ -17,15 +17,18 @@ pull-proto-dependencies:
 	buf export buf.build/cosmos/cosmos-sdk:$(COSMOS_SDK_COMMIT) --output ./validation-chain-client/proto/
 
 test:
-	cargo test --all-features --workspace
+	cargo test --workspace
+
+lint:
+	cargo clippy --workspace --tests
 
 nextest:
-	cargo nextest run --all-features --workspace
+	cargo nextest run --workspace
 
 tracing-test:
 	RUST_LOG=warn,mamoru_core=trace,mamoru_sniffer=debug \
 	RUST_LOG_SPAN_EVENTS=close \
-	cargo test --all-features --workspace -- --nocapture
+	cargo test --workspace -- --nocapture
 
 headers:
 	cargo test --features headers -- --exact generate_headers --nocapture

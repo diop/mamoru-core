@@ -1,18 +1,23 @@
-mod udf;
-pub mod value;
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use crate::DataError;
 use datafusion::{
     arrow::{datatypes::Schema, error::ArrowError, record_batch::RecordBatch},
     prelude::SessionContext,
 };
-use std::sync::Arc;
 
-/// Represents blockchain-agnostic data that is
+use crate::DataError;
+
+pub mod serialize;
+pub mod value;
+
+mod udf;
+
+/// Represents blockchain-specific data entity that is
 /// going to be inserted into Apache Arrow and then queried.
 ///
 /// The trait can be implemented manually or with `blockchain-data-derive` crate.
-pub trait BlockchainData {
+pub trait BlockchainTableItem {
     /// The table name visible in Arrow.
     fn table_name(&self) -> &'static str;
 
@@ -23,11 +28,50 @@ pub trait BlockchainData {
     fn to_record_batch(self: Box<Self>) -> Result<RecordBatch, ArrowError>;
 }
 
-pub struct BlockchainDataCtxBuilder {
-    session: SessionContext,
+/// Represents blockchain-specific data context.
+pub trait BlockchainCtx: Sync + Send + 'static {
+    /// Creates an empty instance of the context.
+    fn empty() -> Self;
+
+    /// The module name that will be used as an env for imports.
+    fn module() -> &'static str;
+
+    /// Blockchain-specific imports that will be called from WASM.
+    /// Put all getters here.
+    fn imports() -> BlockchainSpecificImports<Self>
+    where
+        Self: Sized;
+
+    /// All tables that will be inserted into Arrow.
+    fn as_tables(&self) -> Vec<Box<dyn BlockchainTableItem>>;
 }
 
-impl Default for BlockchainDataCtxBuilder {
+/// A function that will be called from WASM to retrieve data.
+///
+/// The functions are expected to return data serialized with [`serialize::serialize_data`] function.
+/// They could return `impl Serialize` instead, but it's not supported by Rust yet :(.
+pub enum CtxImportFn<T> {
+    /// Function that takes no arguments.
+    NoArgs(fn(&T) -> Vec<u8>),
+
+    /// Function that takes a single `u64` argument.
+    /// Intended to be used for retrieving data by ID.
+    ById(fn(&T, u64) -> Result<&[u8], CtxImportError>),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum CtxImportError {
+    #[error("Failed to retrieve data: {0}")]
+    ById(String),
+}
+
+pub type BlockchainSpecificImports<T> = HashMap<&'static str, CtxImportFn<T>>;
+
+pub struct BlockchainDataBuilder<T> {
+    data: T,
+}
+
+impl<T: BlockchainCtx> Default for BlockchainDataBuilder<T> {
     fn default() -> Self {
         Self::new()
     }
@@ -35,61 +79,72 @@ impl Default for BlockchainDataCtxBuilder {
 
 pub type TableDef = (&'static str, RecordBatch);
 
-impl BlockchainDataCtxBuilder {
+impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
     pub fn new() -> Self {
-        Self {
-            session: setup_session(),
-        }
+        Self { data: T::empty() }
     }
 
-    pub fn empty<F>(self, all_tables: F) -> Result<BlockchainDataCtx, ArrowError>
-    where
-        F: FnOnce() -> Result<Vec<TableDef>, ArrowError>,
-    {
-        let session = self.session;
+    pub fn data_mut(&mut self) -> &mut T {
+        &mut self.data
+    }
 
-        for (table, empty_batch) in all_tables()? {
-            session.register_batch(table, empty_batch)?;
+    pub fn build(
+        self,
+        tx_id: impl Into<String>,
+        tx_hash: impl Into<String>,
+    ) -> Result<BlockchainData<T>, DataError> {
+        let session = setup_session();
+
+        for table in self.data.as_tables() {
+            self.add_to_session(table, &session)?;
         }
 
-        Ok(BlockchainDataCtx {
+        Ok(BlockchainData {
+            data: Arc::new(self.data),
             session,
-            tx_id: "EMPTY_CTX".to_string(),
-            tx_hash: "EMPTY_CTX".to_string(),
+            tx_id: tx_id.into(),
+            tx_hash: tx_hash.into(),
         })
     }
 
-    pub fn add_data(&self, data: Box<dyn BlockchainData>) -> Result<(), DataError> {
+    fn add_to_session(
+        &self,
+        data: Box<dyn BlockchainTableItem>,
+        session: &SessionContext,
+    ) -> Result<(), DataError> {
         let table_name = data.table_name();
         let record_batch = data
             .to_record_batch()
             .map_err(DataError::CreateRecordBatch)?;
 
-        self.session
+        session
             .register_batch(table_name, record_batch)
             .map_err(DataError::RegisterRecordBatch)?;
 
         Ok(())
     }
-
-    pub fn finish(self, tx_id: String, tx_hash: String) -> BlockchainDataCtx {
-        BlockchainDataCtx {
-            session: self.session,
-            tx_id,
-            tx_hash,
-        }
-    }
 }
 
 /// Holds the blockchain data.
-#[derive(Clone)]
-pub struct BlockchainDataCtx {
+pub struct BlockchainData<T> {
+    data: Arc<T>,
     session: SessionContext,
     tx_id: String,
     tx_hash: String,
 }
 
-impl BlockchainDataCtx {
+impl<T> Clone for BlockchainData<T> {
+    fn clone(&self) -> Self {
+        Self {
+            data: Arc::clone(&self.data),
+            session: self.session.clone(),
+            tx_id: self.tx_id.clone(),
+            tx_hash: self.tx_hash.clone(),
+        }
+    }
+}
+
+impl<T> BlockchainData<T> {
     pub fn tx_id(&self) -> &str {
         &self.tx_id
     }
@@ -100,6 +155,10 @@ impl BlockchainDataCtx {
 
     pub(crate) fn session(&self) -> &SessionContext {
         &self.session
+    }
+
+    pub(crate) fn data(&self) -> &T {
+        &self.data
     }
 }
 

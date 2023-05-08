@@ -1,0 +1,45 @@
+{
+  "name": "@mamoru-ai/mamoru-sdk-as",
+  "version": "0.3.0",
+  "description": "AssemblyScript SDK for Mamoru Daemons",
+  "main": "index.js",
+  "scripts": {
+    "asbuild:debug": "asc assembly/index.ts --target debug",
+    "asbuild:release": "asc assembly/index.ts --target release",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "start": "npx serve .",
+    "test": "asp --verbose",
+    "test:ci": "asp --summary"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mamoru-Foundation/mamoru-core.git"
+  },
+  "keywords": [
+    "sdk",
+    "assemblyscript",
+    "web3",
+    "mamoru"
+  ],
+  "author": "Mamoru AI",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Mamoru-Foundation/mamoru-core/issues"
+  },
+  "homepage": "https://github.com/Mamoru-Foundation/mamoru-core#readme",
+  "devDependencies": {
+    "@as-pect/cli": "^8.0.1",
+    "assemblyscript": "^0.27.0"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  },
+  "dependencies": {
+    "@wapc/as-msgpack": "^0.1.15",
+    "assemblyscript-json": "^1.1.0"
+  }
+}

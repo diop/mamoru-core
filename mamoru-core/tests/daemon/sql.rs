@@ -1,6 +1,9 @@
-use crate::daemon::{test_sql_daemon, try_test_sql_daemon};
-use mamoru_core::{test_blockchain_data::data_ctx, DataError};
 use test_log::test;
+
+use mamoru_core::DataError;
+use mamoru_core_test_utils::test_blockchain_data::data_ctx;
+
+use crate::daemon::{test_sql_daemon, try_test_sql_daemon};
 
 #[test(tokio::test)]
 async fn simple_query_matches() -> Result<(), DataError> {

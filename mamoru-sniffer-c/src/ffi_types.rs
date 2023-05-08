@@ -1,5 +1,5 @@
 use mamoru_sniffer::{
-    core::{BlockchainData, BlockchainDataCtx, BlockchainDataCtxBuilder, Value, ValueData},
+    core::{Value, ValueData},
     Sniffer, SnifferError,
 };
 use safer_ffi::prelude::*;
@@ -15,24 +15,6 @@ pub struct FfiSniffer {
 pub struct FfiSnifferResult<T> {
     pub(crate) data: Option<T>,
     pub(crate) error: Option<SnifferError>,
-}
-
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiBlockchainData {
-    pub inner: Box<dyn BlockchainData>,
-}
-
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiBlockchainDataCtx {
-    pub(crate) inner: BlockchainDataCtx,
-}
-
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiBlockchainDataCtxBuilder {
-    pub(crate) inner: BlockchainDataCtxBuilder,
 }
 
 #[derive_ReprC]

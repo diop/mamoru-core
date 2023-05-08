@@ -22,7 +22,7 @@ jobs:
       - name: Run linting
         run: |
           cargo fmt -- --check
-          cargo clippy --workspace --all-features --tests -- -D warnings
+          cargo clippy --workspace --tests -- -D warnings
 
   build:
     runs-on: ubuntu-latest
@@ -38,7 +38,7 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-  build-mamoru-sdk-as:
+  test-mamoru-sdk-as:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -52,12 +52,12 @@ jobs:
         run: |
           npm install --force
           npm run asbuild:debug
-        working-directory: ./mamoru-sdk-as
+        working-directory: ./sdk-as/mamoru-sdk-as
 
       - name: Test
         run: |
           npm run test:ci
-        working-directory: ./mamoru-sdk-as
+        working-directory: ./sdk-as/mamoru-sdk-as
 
   tests:
     runs-on: ubuntu-latest
@@ -103,6 +103,7 @@ jobs:
     services:
       validation-chain:
         image: ${{ needs.prepare-validation-tests.outputs.registry }}/mamoru-foundation/validation-chain-dev:${{ needs.prepare-validation-tests.outputs.submodule_commit }}
+        options: -t
         credentials:
           username: ${{ needs.prepare-validation-tests.outputs.docker_username }}
           password: ${{ needs.prepare-validation-tests.outputs.docker_password }}

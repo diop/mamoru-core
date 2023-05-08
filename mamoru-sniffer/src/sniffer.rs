@@ -1,15 +1,7 @@
-use crate::{
-    errors::SnifferError,
-    from_env,
-    validation_chain::{
-        ChainType, DaemonQueryResponseDto, IncidentReport, IncidentSource, MessageClient,
-        MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
-    },
-};
-use futures::TryStreamExt;
-use mamoru_core::{BlockchainDataCtx, Daemon, Incident};
-use serde::Deserialize;
 use std::{ops::Add, sync::Arc, time::Duration};
+
+use futures::TryStreamExt;
+use serde::Deserialize;
 use tokio::{
     sync::{
         mpsc::{error::TrySendError, Receiver, Sender},
@@ -18,6 +10,17 @@ use tokio::{
     time::Instant,
 };
 use tracing::{debug, error, info, warn};
+
+use mamoru_core::{BlockchainCtx, BlockchainData, Daemon, Incident};
+
+use crate::{
+    errors::SnifferError,
+    from_env,
+    validation_chain::{
+        ChainType, DaemonQueryResponseDto, IncidentReport, IncidentSource, MessageClient,
+        MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
+    },
+};
 
 #[derive(Deserialize)]
 pub struct SnifferConfig {
@@ -90,7 +93,7 @@ impl Sniffer {
     /// Reports to Validation Chain if the provided transaction matches
     /// any rule from the internal storage.
     #[tracing::instrument(skip(ctx, self), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "debug"))]
-    pub async fn observe_data(&self, ctx: BlockchainDataCtx) {
+    pub async fn observe_data<T: BlockchainCtx>(&self, ctx: BlockchainData<T>) {
         let incidents_to_report = self.check_incidents(&ctx).await;
         debug!(len = incidents_to_report.len(), "Matched daemons");
 
@@ -131,7 +134,10 @@ impl Sniffer {
     /// This method doesn't fail as we don't want to break all of our pipeline
     /// because of a single invalid rule.
     #[tracing::instrument(skip(ctx, self), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "info"))]
-    async fn check_incidents(&self, ctx: &BlockchainDataCtx) -> Vec<(String, Vec<Incident>)> {
+    async fn check_incidents<T: BlockchainCtx>(
+        &self,
+        ctx: &BlockchainData<T>,
+    ) -> Vec<(String, Vec<Incident>)> {
         let results = {
             let rules = self.rules.read().await;
             let futures: Vec<_> = rules
@@ -156,7 +162,7 @@ impl Sniffer {
                     }
                 }
                 Err(err) => {
-                    error!(?err, "Failed to verify daemon, skipping...");
+                    error!(?err, %daemon_id, "Failed to verify daemon, skipping...");
                     None
                 }
             })

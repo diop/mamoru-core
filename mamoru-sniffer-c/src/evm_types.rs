@@ -1,26 +1,56 @@
-use crate::ffi_types::FfiBlockchainData;
-use mamoru_evm_types::{
-    Block, BlockBatch, CallTrace, CallTraceBatch, Event, EventBatch, Transaction, TransactionBatch,
-};
+use crate::{FfiSniffer, RUNTIME};
+use mamoru_evm_types::{Block, CallTrace, Event, EvmCtx, Transaction};
+use mamoru_sniffer::core::{BlockchainData, BlockchainDataBuilder};
 use safer_ffi::prelude::*;
 
-// Transaction
 #[derive_ReprC]
 #[ReprC::opaque]
-pub struct FfiTransactionBatch {
-    pub inner: Box<TransactionBatch>,
+pub struct FfiEvmBlockchainDataCtx {
+    pub(crate) inner: BlockchainData<EvmCtx>,
+}
+
+#[derive_ReprC]
+#[ReprC::opaque]
+pub struct FfiEvmBlockchainDataBuilder {
+    pub(crate) inner: BlockchainDataBuilder<EvmCtx>,
 }
 
 #[ffi_export]
-fn new_transaction_batch() -> repr_c::Box<FfiTransactionBatch> {
-    let inner = Box::new(TransactionBatch(Vec::new()));
+fn new_evm_blockchain_data_builder() -> repr_c::Box<FfiEvmBlockchainDataBuilder> {
+    let inner = BlockchainDataBuilder::new();
+    repr_c::Box::new(FfiEvmBlockchainDataBuilder { inner })
+}
 
-    repr_c::Box::new(FfiTransactionBatch { inner })
+/// Frees `builder` argument.
+#[ffi_export]
+fn evm_blockchain_data_builder_finish(
+    builder: repr_c::Box<FfiEvmBlockchainDataBuilder>,
+    tx_id: char_p::Ref<'_>,
+    tx_hash: char_p::Ref<'_>,
+) -> repr_c::Box<FfiEvmBlockchainDataCtx> {
+    let builder = builder.into().inner;
+    let tx_id = tx_id.to_str().to_string();
+    let tx_hash = tx_hash.to_str().to_string();
+
+    repr_c::Box::new(FfiEvmBlockchainDataCtx {
+        inner: builder
+            .build(tx_id, tx_hash)
+            .expect("BUG: failed to build `BlockchainData`"),
+    })
+}
+
+/// Frees `data` argument.
+#[ffi_export]
+fn evm_sniffer_observe_data(sniffer: &FfiSniffer, data: repr_c::Box<FfiEvmBlockchainDataCtx>) {
+    let sniffer = &sniffer.inner;
+    let data = data.into();
+
+    RUNTIME.block_on(async { sniffer.observe_data(data.inner).await });
 }
 
 #[ffi_export]
-fn transaction_batch_append<'a>(
-    batch: &mut FfiTransactionBatch,
+fn evm_transaction_append<'a>(
+    builder: &mut FfiEvmBlockchainDataBuilder,
     tx_index: u32,
     tx_hash: char_p::Ref<'a>,
     block_index: u64,
@@ -37,9 +67,9 @@ fn transaction_batch_append<'a>(
     input: c_slice::Ref<'a, u8>,
     size: f64,
 ) {
-    let batch = &mut batch.inner.0;
+    let transactions = &mut builder.inner.data_mut().transactions;
 
-    batch.push(Transaction {
+    transactions.push(Transaction {
         tx_index,
         tx_hash: tx_hash.to_str().to_string(),
         typ,
@@ -58,32 +88,9 @@ fn transaction_batch_append<'a>(
     });
 }
 
-/// Frees `object` argument.
 #[ffi_export]
-fn transaction_batch_finish(
-    object: repr_c::Box<FfiTransactionBatch>,
-) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
-
-    repr_c::Box::new(FfiBlockchainData { inner })
-}
-
-// CallTrace
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiCallTraceBatch {
-    pub inner: Box<CallTraceBatch>,
-}
-
-#[ffi_export]
-fn new_call_trace_batch() -> repr_c::Box<FfiCallTraceBatch> {
-    let inner = Box::new(CallTraceBatch(Vec::new()));
-    repr_c::Box::new(FfiCallTraceBatch { inner })
-}
-
-#[ffi_export]
-fn call_trace_batch_append<'a>(
-    batch: &mut FfiCallTraceBatch,
+fn evm_call_trace_append<'a>(
+    builder: &mut FfiEvmBlockchainDataBuilder,
     seq: u32,
     depth: u32,
     tx_index: u32,
@@ -96,8 +103,9 @@ fn call_trace_batch_append<'a>(
     gas_used: u64,
     input: c_slice::Ref<'a, u8>,
 ) {
-    let batch = &mut batch.inner.0;
-    batch.push(CallTrace {
+    let call_traces = &mut builder.inner.data_mut().call_traces;
+
+    call_traces.push(CallTrace {
         seq,
         tx_index,
         block_index,
@@ -112,32 +120,9 @@ fn call_trace_batch_append<'a>(
     });
 }
 
-/// Frees `object` argument.
 #[ffi_export]
-fn call_trace_batch_finish(
-    object: repr_c::Box<FfiCallTraceBatch>,
-) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
-
-    repr_c::Box::new(FfiBlockchainData { inner })
-}
-
-// Block
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiBlockBatch {
-    pub inner: Box<BlockBatch>,
-}
-
-#[ffi_export]
-fn new_block_batch() -> repr_c::Box<FfiBlockBatch> {
-    let inner = Box::new(BlockBatch(Vec::new()));
-    repr_c::Box::new(FfiBlockBatch { inner })
-}
-
-#[ffi_export]
-fn block_batch_append<'a>(
-    batch: &mut FfiBlockBatch,
+fn evm_block_set<'a>(
+    builder: &mut FfiEvmBlockchainDataBuilder,
     block_index: u64,
     hash: char_p::Ref<'a>,
     parent_hash: char_p::Ref<'a>,
@@ -152,9 +137,9 @@ fn block_batch_append<'a>(
     gas_used: u64,
     gas_limit: u64,
 ) {
-    let batch = &mut batch.inner.0;
+    let data = builder.inner.data_mut();
 
-    batch.push(Block {
+    data.set_block(Block {
         block_index,
         hash: hash.to_str().to_string(),
         parent_hash: parent_hash.to_str().to_string(),
@@ -171,29 +156,9 @@ fn block_batch_append<'a>(
     });
 }
 
-/// Frees `object` argument.
 #[ffi_export]
-fn block_batch_finish(object: repr_c::Box<FfiBlockBatch>) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
-    repr_c::Box::new(FfiBlockchainData { inner })
-}
-
-// Event
-#[derive_ReprC]
-#[ReprC::opaque]
-pub struct FfiEventBatch {
-    pub inner: Box<EventBatch>,
-}
-
-#[ffi_export]
-fn new_event_batch() -> repr_c::Box<FfiEventBatch> {
-    let inner = Box::new(EventBatch(Vec::new()));
-    repr_c::Box::new(FfiEventBatch { inner })
-}
-
-#[ffi_export]
-fn event_batch_append<'a>(
-    batch: &mut FfiEventBatch,
+fn evm_event_append<'a>(
+    builder: &mut FfiEvmBlockchainDataBuilder,
     index: u32,
     address: char_p::Ref<'a>,
     block_number: u64,
@@ -207,8 +172,9 @@ fn event_batch_append<'a>(
     topic4: c_slice::Ref<'a, u8>,
     data: c_slice::Ref<'a, u8>,
 ) {
-    let batch = &mut batch.inner.0;
-    batch.push(Event {
+    let events = &mut builder.inner.data_mut().events;
+
+    events.push(Event {
         index,
         address: address.to_str().to_string(),
         block_number,
@@ -222,11 +188,4 @@ fn event_batch_append<'a>(
         topic4: topic4.to_vec(),
         data: data.to_vec(),
     });
-}
-
-/// Frees `object` argument.
-#[ffi_export]
-fn event_batch_finish(object: repr_c::Box<FfiEventBatch>) -> repr_c::Box<FfiBlockchainData> {
-    let inner = object.into().inner;
-    repr_c::Box::new(FfiBlockchainData { inner })
 }
