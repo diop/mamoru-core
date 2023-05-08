@@ -7,7 +7,7 @@ on:
         required: true
         default: "mamoru-sdk-as"
         type: choice
-        choices:
+        options:
           - mamoru-sdk-as
           - mamoru-sui-sdk-as
           - mamoru-aptos-sdk-as
