@@ -25,6 +25,6 @@ jobs:
       - run: |
           npm install --force
           npm publish --access=public
-        working-directory: ./as-sdk/${{ inputs.package }}
+        working-directory: ./sdk-as/${{ inputs.package }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
