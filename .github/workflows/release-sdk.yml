@@ -1,18 +1,17 @@
 name: "Release SDK for AssemblyScript"
 on:
   workflow_dispatch:
-
-inputs:
-  package:
-    description: "The package to release"
-    required: true
-    default: "mamoru-sdk-as"
-    type: choice
-    choices:
-      - mamoru-sdk-as
-      - mamoru-sui-sdk-as
-      - mamoru-aptos-sdk-as
-      - mamoru-evm-sdk-as
+    inputs:
+      package:
+        description: "The package to release"
+        required: true
+        default: "mamoru-sdk-as"
+        type: choice
+        choices:
+          - mamoru-sdk-as
+          - mamoru-sui-sdk-as
+          - mamoru-aptos-sdk-as
+          - mamoru-evm-sdk-as
 
 jobs:
   release:
