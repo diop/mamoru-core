@@ -121,3 +121,35 @@ impl StructValue {
         self.fields.get(key).is_some()
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    #[ignore]
+    // cargo test -p mamoru-core test_value_serialize -- --ignored
+    fn test_value_serialize() {
+        use crate::StructValue;
+        use crate::Value;
+        use crate::ValueData;
+        use std::collections::HashMap;
+
+        let mut fields = HashMap::new();
+        fields.insert("b".to_string(), Value::U64(2));
+        fields.insert("c".to_string(), Value::String("test".to_string()));
+        fields.insert(
+            "d".to_string(),
+            Value::List(vec![Value::Bool(true), Value::Bool(false)]),
+        );
+
+        fields.insert("e".to_string(), Value::String(format!("{:#x}", 110011u128)));
+
+        let struct_value = StructValue::new("test".to_string(), fields);
+        let value = Value::Struct(struct_value);
+        let value_data = ValueData::new(value).unwrap();
+        let bytes = value_data.as_ref();
+        dbg!(&bytes);
+
+        panic!()
+    }
+}

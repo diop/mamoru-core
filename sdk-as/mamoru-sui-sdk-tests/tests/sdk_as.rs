@@ -51,7 +51,7 @@ fn sui_ctx() -> BlockchainData<SuiCtx> {
         },
         CallTrace {
             seq: 1,
-            tx_seq: 42,
+            tx_seq: 43,
             depth: 2,
             call_type: 1,
             gas_used: 501,
@@ -140,11 +140,13 @@ async fn smoke() {
             assert(callTrace1.gasUsed == 500, "callTrace1.gas_used == 500");
             assert(callTrace1.transactionModule == "some-module", "callTrace1.transaction_module == \"some-module\"");
             assert(callTrace1.func == "some-function", "callTrace1.function == \"some-function\"");
+            assert(callTrace1.args.length == 1, "callTrace1.args.length == 1");
+            assert(callTrace1.typeArgs.length == 1, "callTrace1.typeArgs.length == 1");
 
             const callTrace2 = ctx.callTraces[1];
 
             assert(callTrace2.seq == 1, "callTrace2.seq == 1");
-            assert(callTrace2.txSeq == 42, "callTrace2.tx_seq == 42");
+            assert(callTrace2.txSeq == 43, "callTrace2.tx_seq == 43");
             assert(callTrace2.depth == 2, "callTrace2.depth == 2");
             assert(callTrace2.callType == 1, "callTrace2.call_type == 1");
             assert(callTrace2.gasUsed == 501, "callTrace2.gas_used == 501");
@@ -155,13 +157,13 @@ async fn smoke() {
 
             assert(callTraceArg1.seq == 0, "callTraceArg1.seq == 0");
             assert(callTraceArg1.callTraceSeq == 0, "callTraceArg1.call_trace_seq == 0");
-            assert(callTraceArg1.value.asU64()!.value == 42, "callTraceArg1.arg == 42");
+            assert(callTraceArg1.value.asU64() == 42, "callTraceArg1.arg == 42");
 
             const callTraceArg2 = ctx.callTraceArgs[1];
 
             assert(callTraceArg2.seq == 1, "callTraceArg2.seq == 1");
             assert(callTraceArg2.callTraceSeq == 1, "callTraceArg2.call_trace_seq == 1");
-            assert(callTraceArg2.value.asString()!.value == "forty-two", "callTraceArg2.arg == \"forty-two\"");
+            assert(callTraceArg2.value.asString() == "forty-two", "callTraceArg2.arg == \"forty-two\"");
 
             const callTraceTypeArg1 = ctx.callTraceTypeArgs[0];
 

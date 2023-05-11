@@ -1,4 +1,10 @@
 import { Decoder } from "@wapc/as-msgpack/assembly";
+import { i128, u128 } from "as-bignum/assembly";
+
+export {
+    i128,
+    u128,
+}
 
 const BOOL_VALUE_TAG: string = "b";
 const U64_VALUE_TAG: string = "u64";
@@ -55,44 +61,52 @@ export class Value {
         throw new Error("unknown `Value` type: " + type);
     }
 
-    public asBool(): BoolValue | null {
-        if (this._type == BOOL_VALUE_TAG) {
-            return this as BoolValue;
-        }
-
-        return null;
+    public isBool(): boolean {
+        return this._type == BOOL_VALUE_TAG;
     }
 
-    public asU64(): U64Value | null {
-        if (this._type == U64_VALUE_TAG) {
-            return this as U64Value;
-        }
-
-        return null;
+    public asBool(): boolean {
+        return (this as BoolValue).value;
     }
 
-    public asString(): StringValue | null {
-        if (this._type == STRING_VALUE_TAG) {
-            return this as StringValue;
-        }
-
-        return null;
+    public isU64(): boolean {
+        return this._type == U64_VALUE_TAG;
     }
 
-    public asList(): ListValue | null {
-        if (this._type == LIST_VALUE_TAG) {
-            return this as ListValue;
-        }
-
-        return null;
+    public asU64(): u64 {
+        return (this as U64Value).value;
     }
 
-    public asStruct(): StructValue | null {
-        if (this._type == STRUCT_VALUE_TAG) {
-            return this as StructValue;
-        }
+    public isString(): boolean {
+        return this._type == STRING_VALUE_TAG;
+    }
 
-        return null;
+    public asString(): string {
+        return (this as StringValue).value;
+    }
+
+    public asU128(): u128 {
+        return u128.fromString(this.asString(), 16);
+    }
+
+    public asI128(): i128 {
+        return i128.fromString(this.asString(), 16);
+    }
+
+    public isList(): boolean {
+        return this._type == LIST_VALUE_TAG;
+    }
+
+    public asList(): Value[] {
+        return (this as ListValue).values;
+    }
+
+    public isStruct(): boolean {
+        return this._type == STRUCT_VALUE_TAG;
+    }
+
+    public asStruct(): StructValue {
+        return (this as StructValue);
     }
 }
 

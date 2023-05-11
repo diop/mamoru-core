@@ -1,6 +1,6 @@
 {
   "name": "@mamoru-ai/mamoru-sdk-as",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "AssemblyScript SDK for Mamoru Daemons",
   "main": "index.js",
   "scripts": {
@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@wapc/as-msgpack": "^0.1.15",
+    "as-bignum": "^0.2.31",
     "assemblyscript-json": "^1.1.0"
   }
 }

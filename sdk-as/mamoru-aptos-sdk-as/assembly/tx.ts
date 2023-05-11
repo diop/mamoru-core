@@ -1,6 +1,7 @@
 import { _mamoru_get_transactions } from "./imports";
 import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Decoder } from "@wapc/as-msgpack/assembly";
+import { AptosCtx, CallTrace } from "./index";
 
 export class Transaction {
     public readonly seq: u64
@@ -16,7 +17,11 @@ export class Transaction {
     public readonly sender: string
     public readonly sequenceNumber: u64
 
+    private _ctx: AptosCtx
+    private _callTraces: CallTrace[] | null
+
     private constructor(
+        ctx: AptosCtx,
         seq: u64,
         block_hash: string,
         hash: string,
@@ -30,6 +35,9 @@ export class Transaction {
         sender: string,
         sequence_number: u64
     ) {
+        this._ctx = ctx
+        this._callTraces = null
+
         this.seq = seq
         this.blockHash = block_hash
         this.hash = hash
@@ -44,16 +52,37 @@ export class Transaction {
         this.sequenceNumber = sequence_number
     }
 
-    public static loadAll(): Transaction[] {
-        let ptr_len = unpackValues(_mamoru_get_transactions());
+    /// All call traces in the current transaction
+    public get callTraces(): CallTrace[] {
+        if (this._callTraces == null) {
+            let callTraces = new Array<CallTrace>();
+            for (let i = 0; i < this._ctx.callTraces.length; i++) {
+                const trace = this._ctx.callTraces[i];
 
-        return Transaction.fromHost(ptr_len[0], ptr_len[1]);
+                if (trace.txSeq == this.seq) {
+                    callTraces.push(trace);
+                }
+            }
+
+            this._callTraces = callTraces
+        }
+
+        return this._callTraces!
     }
 
-    private static fromHost(ptr: u32, len: u32): Transaction[] {
+    public static loadAll(ctx: AptosCtx): Transaction[] {
+        let ptr_len = unpackValues(_mamoru_get_transactions());
+
+        return Transaction.fromHost(ctx, ptr_len[0], ptr_len[1]);
+    }
+
+    private static fromHost(ctx: AptosCtx, ptr: u32, len: u32): Transaction[] {
         const decoder = new Decoder(readMemory(ptr, len).buffer);
 
-        return decoder.readArray<Transaction>((decoder: Decoder) => {
+        let txs = new Array<Transaction>();
+        let size = decoder.readArraySize();
+
+        for (let i: u32 = 0; i < size; i++) {
             // consume array size (we can't parse data otherwise)
             let _ = decoder.readArraySize();
 
@@ -70,7 +99,8 @@ export class Transaction {
             let sender = decoder.readString();
             let sequence_number = decoder.readUInt64();
 
-            return new Transaction(
+            txs.push(new Transaction(
+                ctx,
                 seq,
                 block_hash,
                 hash,
@@ -83,7 +113,10 @@ export class Transaction {
                 status,
                 sender,
                 sequence_number
-            );
-        });
+            ));
+        }
+
+        return txs;
+
     }
 }

@@ -1,5 +1,6 @@
 // The entry file of your WebAssembly module.
 import { JSON } from "assemblyscript-json/assembly";
+
 import { _env_assert, _mamoru_http, _mamoru_parameter, _mamoru_query, _mamoru_report, } from "./imports";
 
 import { HttpMethod, HttpRequest, HttpResponse } from "./http";
@@ -14,9 +15,11 @@ import {
     StringDataValue,
     StructDataValue
 } from "./incident";
-import { Value } from "./value";
+import { i128, u128, Value } from "./value";
 
 export {
+    i128,
+    u128,
     JSON,
     HttpMethod,
     HttpRequest,

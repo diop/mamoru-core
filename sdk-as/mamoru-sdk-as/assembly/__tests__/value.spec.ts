@@ -1,24 +1,9 @@
-import { Value } from "../value";
-
+import { u128, Value } from "../value";
 
 /*
+See `blockchain_data/value.rs:130` to generate this value
+*/
 
-The bytes are build from the following Rust code:
-
-    let mut fields = HashMap::new();
-    fields.insert("b".to_string(), Value::U64(2));
-    fields.insert("c".to_string(), Value::String("test".to_string()));
-    fields.insert(
-        "d".to_string(),
-        Value::List(vec![Value::Bool(true), Value::Bool(false)]),
-    );
-
-    let struct_value = StructValue::new("test".to_string(), fields);
-    let value = Value::Struct(struct_value);
-    let value_data = ValueData::new(value).unwrap();
-    let bytes = value_data.as_ref();
-    dbg!(&bytes);
- */
 const VALUE_EXAMPLE = [
     129,
     162,
@@ -30,7 +15,21 @@ const VALUE_EXAMPLE = [
     101,
     115,
     116,
-    131,
+    132,
+    161,
+    100,
+    129,
+    161,
+    108,
+    146,
+    129,
+    161,
+    98,
+    195,
+    129,
+    161,
+    98,
+    194,
     161,
     99,
     129,
@@ -50,19 +49,18 @@ const VALUE_EXAMPLE = [
     52,
     2,
     161,
+    101,
+    129,
+    161,
+    115,
+    167,
+    48,
+    120,
+    49,
+    97,
     100,
-    129,
-    161,
-    108,
-    146,
-    129,
-    161,
     98,
-    195,
-    129,
-    161,
     98,
-    194,
 ];
 
 describe("Value Smoke", () => {
@@ -72,18 +70,22 @@ describe("Value Smoke", () => {
 
         const value = Value.fromBytes(value_example.buffer)
 
-        const struct = value.asStruct()!;
+        expect(value.isStruct()).toBe(true);
+        const struct = value.asStruct();
         expect(struct.type).toBe("test");
 
         const field_b = struct.fields.get("b");
-        expect(field_b.asU64()!.value).toBe(2);
+        expect(field_b.asU64()).toBe(2);
 
         const field_c = struct.fields.get("c");
-        expect(field_c.asString()!.value).toBe("test");
+        expect(field_c.asString()).toBe("test");
 
         const field_d = struct.fields.get("d");
-        const b_values = field_d.asList()!.values;
-        expect(b_values[0].asBool()!.value).toBe(true);
-        expect(b_values[1].asBool()!.value).toBe(false);
+        const b_values = field_d.asList();
+        expect(b_values[0].asBool()).toBe(true);
+        expect(b_values[1].asBool()).toBe(false);
+
+        const field_e = struct.fields.get("e");
+        expect(field_e.asU128()).toBe(u128.from(110011));
     });
 });

@@ -2,6 +2,7 @@ import { _mamoru_get_call_trace_arg_by_id, _mamoru_get_call_trace_args, _mamoru_
 import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Value } from "@mamoru-ai/mamoru-sdk-as/assembly";
 import { Decoder } from "@wapc/as-msgpack/assembly";
+import { SuiCtx } from "./index";
 
 export class CallTrace {
     public readonly seq: u64
@@ -12,7 +13,15 @@ export class CallTrace {
     public readonly transactionModule: string | null
     public readonly func: string
 
-    private constructor(seq: u64, txSeq: u64, depth: u32, callType: u8, gasUsed: u64, transactionModule: string | null, func: string) {
+    private _ctx: SuiCtx
+    private _args: Value[] | null
+    private _typeArgs: string[] | null
+
+    private constructor(ctx: SuiCtx, seq: u64, txSeq: u64, depth: u32, callType: u8, gasUsed: u64, transactionModule: string | null, func: string) {
+        this._ctx = ctx
+        this._args = null
+        this._typeArgs = null
+
         this.seq = seq;
         this.txSeq = txSeq;
         this.depth = depth;
@@ -22,16 +31,56 @@ export class CallTrace {
         this.func = func;
     }
 
-    public static loadAll(): CallTrace[] {
-        let ptrLen = unpackValues(_mamoru_get_call_traces());
+    /// All arguments of the current call trace
+    public get args(): Value[] {
+        if (this._args == null) {
+            let args = new Array<Value>();
+            for (let i = 0; i < this._ctx.callTraceArgs.length; i++) {
+                const arg = this._ctx.callTraceArgs[i];
 
-        return CallTrace.fromHost(ptrLen[0], ptrLen[1]);
+                if (arg.callTraceSeq == this.seq) {
+                    args.push(arg.value);
+                }
+            }
+
+            this._args = args
+        }
+
+        return this._args!
     }
 
-    private static fromHost(ptr: u32, len: u32): CallTrace[] {
+    /// All type arguments of the current call trace
+    public get typeArgs(): string[] {
+        if (this._typeArgs == null) {
+            let typeArgs = new Array<string>();
+            for (let i = 0; i < this._ctx.callTraceTypeArgs.length; i++) {
+                const arg = this._ctx.callTraceTypeArgs[i];
+
+                if (arg.callTraceSeq == this.seq) {
+                    typeArgs.push(arg.arg);
+                }
+            }
+
+            this._typeArgs = typeArgs
+        }
+
+        return this._typeArgs!
+    }
+
+    public static loadAll(ctx: SuiCtx): CallTrace[] {
+        let ptrLen = unpackValues(_mamoru_get_call_traces());
+
+        return CallTrace.fromHost(ctx, ptrLen[0], ptrLen[1]);
+    }
+
+
+    private static fromHost(ctx: SuiCtx, ptr: u32, len: u32): CallTrace[] {
         const decoder = new Decoder(readMemory(ptr, len).buffer);
 
-        return decoder.readArray<CallTrace>((decoder: Decoder) => {
+        let callTraces = new Array<CallTrace>();
+        let size = decoder.readArraySize();
+
+        for (let i: u32 = 0; i < size; i++) {
             // consume array size (we can't parse data otherwise)
             let _ = decoder.readArraySize();
 
@@ -50,9 +99,10 @@ export class CallTrace {
 
             let func = decoder.readString();
 
-            return new CallTrace(seq, txSeq, depth, callType, gasUsed, transactionModule, func);
-        });
+            callTraces.push(new CallTrace(ctx, seq, txSeq, depth, callType, gasUsed, transactionModule, func));
+        }
 
+        return callTraces;
     }
 }
 

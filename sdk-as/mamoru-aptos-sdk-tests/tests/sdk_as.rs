@@ -35,8 +35,8 @@ fn aptos_ctx() -> BlockchainData<AptosCtx> {
         },
         Transaction {
             seq: 10,
-            block_hash: "some-hash".to_string(),
-            hash: "another-some-hash".to_string(),
+            block_hash: "some-another-hash".to_string(),
+            hash: "some-another-hash".to_string(),
             event_root_hash: "event-root-hash".to_string(),
             state_change_hash: "state_change_hash".to_string(),
             gas_used: 11,
@@ -60,7 +60,7 @@ fn aptos_ctx() -> BlockchainData<AptosCtx> {
     builder.data_mut().call_traces.extend(vec![
         CallTrace {
             seq: 0,
-            tx_seq: 42,
+            tx_seq: 3,
             depth: 0,
             call_type: 0,
             gas_used: 500,
@@ -124,6 +124,7 @@ async fn smoke() {
             assert(block.hash == "some-hash", "block.hash == \"some-hash\"");
             assert(block.epoch == 1, "block.epoch == 1");
             assert(block.timestampUsecs == 2, "block.timestamp_usecs == 2");
+            assert(block.txs.length == 1, "block.txs.length == 1");
 
             const tx1 = ctx.txs[0];
 
@@ -139,12 +140,13 @@ async fn smoke() {
             assert(tx1.status == 8, "tx1.status == 8");
             assert(tx1.sender == "some-sender", "tx1.sender == \"some-sender\"");
             assert(tx1.sequenceNumber == 9, "tx1.sequence_number == 9");
+            assert(tx1.callTraces.length == 1, "tx1.call_traces.length == 1");
 
             const tx2 = ctx.txs[1];
 
             assert(tx2.seq == 10, "tx2.seq == 10");
-            assert(tx2.blockHash == "some-hash", "tx2.block_hash == \"some-hash\"");
-            assert(tx2.hash == "another-some-hash", "tx2.hash == \"another-some-hash\"");
+            assert(tx2.blockHash == "some-another-hash", "tx2.block_hash == \"some-another-hash\"");
+            assert(tx2.hash == "some-another-hash", "tx2.hash == \"some-another-hash\"");
             assert(tx2.eventRootHash == "event-root-hash", "tx2.event_root_hash == \"event-root-hash\"");
             assert(tx2.stateChangeHash == "state_change_hash", "tx2.state_change_hash == \"state_change_hash\"");
             assert(tx2.gasUsed == 11, "tx2.gas_used == 11");
@@ -166,12 +168,14 @@ async fn smoke() {
             const callTrace1 = ctx.callTraces[0];
 
             assert(callTrace1.seq == 0, "callTrace1.seq == 0");
-            assert(callTrace1.txSeq == 42, "callTrace1.tx_seq == 42");
+            assert(callTrace1.txSeq == 3, "callTrace1.tx_seq == 3");
             assert(callTrace1.depth == 0, "callTrace1.depth == 0");
             assert(callTrace1.callType == 0, "callTrace1.call_type == 0");
             assert(callTrace1.gasUsed == 500, "callTrace1.gas_used == 500");
             assert(callTrace1.transactionModule == "some-module", "callTrace1.transaction_module == \"some-module\"");
             assert(callTrace1.func == "some-function", "callTrace1.function == \"some-function\"");
+            assert(callTrace1.args.length == 1, "callTrace1.args.length == 1");
+            assert(callTrace1.typeArgs.length == 1, "callTrace1.typeArgs.length == 1");
 
             const callTrace2 = ctx.callTraces[1];
 
@@ -187,13 +191,13 @@ async fn smoke() {
 
             assert(callTraceArg1.seq == 0, "callTraceArg1.seq == 0");
             assert(callTraceArg1.callTraceSeq == 0, "callTraceArg1.call_trace_seq == 0");
-            assert(callTraceArg1.value.asU64()!.value == 42, "callTraceArg1.arg == 42");
+            assert(callTraceArg1.value.asU64() == 42, "callTraceArg1.arg == 42");
 
             const callTraceArg2 = ctx.callTraceArgs[1];
 
             assert(callTraceArg2.seq == 1, "callTraceArg2.seq == 1");
             assert(callTraceArg2.callTraceSeq == 1, "callTraceArg2.call_trace_seq == 1");
-            assert(callTraceArg2.value.asString()!.value == "forty-two", "callTraceArg2.arg == \"forty-two\"");
+            assert(callTraceArg2.value.asString() == "forty-two", "callTraceArg2.arg == \"forty-two\"");
 
             const callTraceTypeArg1 = ctx.callTraceTypeArgs[0];
 
