@@ -15,7 +15,7 @@ use crate::validation_chain_tests::{message_client, query_client, retry, sniffer
 #[test(tokio::test)]
 #[ignore]
 async fn smoke() {
-    let chain = ChainType::SuiDevnet;
+    let chain = ChainType::SuiTestnet;
     let tx_hash = random_string();
 
     let daemon_id = register_daemon(chain).await;
@@ -56,7 +56,7 @@ async fn register_daemon(chain: ChainType) -> String {
     let daemon_metadata_response = message_client
         .register_daemon_metadata(RegisterDaemonMetadataRequest {
             kind: DaemonMetadataType::Sole,
-            supported_chains: vec![ChainType::SuiDevnet],
+            supported_chains: vec![ChainType::SuiTestnet],
             title: "test".to_string(),
             description: "test".to_string(),
             logo_url: "https://example.com/logo.png".to_string(),

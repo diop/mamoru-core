@@ -14,14 +14,14 @@ async fn smoke() {
     let client = message_client().await;
 
     client
-        .register_sniffer(ChainType::SuiDevnet)
+        .register_sniffer(ChainType::SuiTestnet)
         .await
         .expect("Register sniffer error");
 
     let daemon_metadata_response = client
         .register_daemon_metadata(RegisterDaemonMetadataRequest {
             kind: DaemonMetadataType::Sole,
-            supported_chains: vec![ChainType::SuiDevnet],
+            supported_chains: vec![ChainType::SuiTestnet],
             title: "test".to_string(),
             description: "test".to_string(),
             logo_url: "https://example.com/logo.png".to_string(),
@@ -40,7 +40,7 @@ async fn smoke() {
     let register_daemon_response = client
         .register_daemon(
             daemon_metadata_response.daemon_metadata_id,
-            ChainType::SuiDevnet,
+            ChainType::SuiTestnet,
             vec![],
             None,
         )
@@ -68,7 +68,7 @@ async fn smoke() {
                     hash: "test_block_id".to_string(),
                 }),
             },
-            chain: ChainType::SuiDevnet,
+            chain: ChainType::SuiTestnet,
             incident: Incident {
                 severity: MamoruIncidentSeverity::Info,
                 message: "Test".to_string(),
