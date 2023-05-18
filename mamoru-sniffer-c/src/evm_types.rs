@@ -21,20 +21,45 @@ fn new_evm_blockchain_data_builder() -> repr_c::Box<FfiEvmBlockchainDataBuilder>
     repr_c::Box::new(FfiEvmBlockchainDataBuilder { inner })
 }
 
+#[ffi_export]
+fn evm_blockchain_data_builder_set_tx(
+    builder: &mut FfiEvmBlockchainDataBuilder,
+    tx_id: char_p::Ref<'_>,
+    tx_hash: char_p::Ref<'_>,
+) {
+    let tx_id = tx_id.to_str();
+    let tx_hash = tx_hash.to_str();
+
+    builder.inner.set_tx_data(tx_id, tx_hash);
+}
+
+#[ffi_export]
+fn evm_blockchain_data_builder_set_block(
+    builder: &mut FfiEvmBlockchainDataBuilder,
+    block_id: char_p::Ref<'_>,
+    block_hash: char_p::Ref<'_>,
+) {
+    let block_id = block_id.to_str();
+    let block_hash = block_hash.to_str();
+
+    builder.inner.set_block_data(block_id, block_hash);
+}
+
+#[ffi_export]
+fn evm_blockchain_data_builder_set_mempool_source(builder: &mut FfiEvmBlockchainDataBuilder) {
+    builder.inner.set_mempool_source();
+}
+
 /// Frees `builder` argument.
 #[ffi_export]
 fn evm_blockchain_data_builder_finish(
     builder: repr_c::Box<FfiEvmBlockchainDataBuilder>,
-    tx_id: char_p::Ref<'_>,
-    tx_hash: char_p::Ref<'_>,
 ) -> repr_c::Box<FfiEvmBlockchainDataCtx> {
     let builder = builder.into().inner;
-    let tx_id = tx_id.to_str().to_string();
-    let tx_hash = tx_hash.to_str().to_string();
 
     repr_c::Box::new(FfiEvmBlockchainDataCtx {
         inner: builder
-            .build(tx_id, tx_hash)
+            .build()
             .expect("BUG: failed to build `BlockchainData`"),
     })
 }

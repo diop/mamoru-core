@@ -18,15 +18,26 @@ typedef struct FfiEvmBlockchainDataBuilder FfiEvmBlockchainDataBuilder_t;
 
 FfiEvmBlockchainDataBuilder_t * new_evm_blockchain_data_builder (void);
 
+void evm_blockchain_data_builder_set_tx (
+    FfiEvmBlockchainDataBuilder_t * builder,
+    char const * tx_id,
+    char const * tx_hash);
+
+void evm_blockchain_data_builder_set_block (
+    FfiEvmBlockchainDataBuilder_t * builder,
+    char const * block_id,
+    char const * block_hash);
+
+void evm_blockchain_data_builder_set_mempool_source (
+    FfiEvmBlockchainDataBuilder_t * builder);
+
 typedef struct FfiEvmBlockchainDataCtx FfiEvmBlockchainDataCtx_t;
 
 /** \brief
  *  Frees `builder` argument.
  */
 FfiEvmBlockchainDataCtx_t * evm_blockchain_data_builder_finish (
-    FfiEvmBlockchainDataBuilder_t * builder,
-    char const * tx_id,
-    char const * tx_hash);
+    FfiEvmBlockchainDataBuilder_t * builder);
 
 typedef struct FfiSniffer FfiSniffer_t;
 

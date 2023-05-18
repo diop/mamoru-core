@@ -63,7 +63,10 @@ pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainData<TestCtx> {
         },
     ]);
 
-    builder.build(format!("{}", tx_seq), digest).unwrap()
+    builder.set_tx_data(format!("{}", tx_seq), digest.clone());
+    builder.set_block_data(format!("{}", tx_seq), digest);
+
+    builder.build().unwrap()
 }
 
 #[derive(BlockchainData, Clone, Serialize, Deserialize)]

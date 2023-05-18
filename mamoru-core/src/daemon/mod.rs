@@ -65,7 +65,7 @@ impl Daemon {
     }
 
     /// Executes the given daemon.
-    #[tracing::instrument(skip(ctx, self), fields(daemon_id = self.id(), tx_hash = ctx.tx_hash(), level = "trace"))]
+    #[tracing::instrument(skip_all)]
     pub async fn verify<T: BlockchainCtx>(
         &self,
         ctx: &BlockchainData<T>,

@@ -30,11 +30,25 @@ async fn smoke() {
     retry(|| async {
         let incidents = get_incidents(&daemon_id).await;
 
-        if incidents.len() == 1 {
-            Ok(())
-        } else {
-            Err(format!("Wrong incidents len: {}", incidents.len()))
+        if incidents.len() != 1 {
+            return Err(format!("Wrong incidents len: {}", incidents.len()));
         }
+
+        let incident = &incidents[0];
+
+        assert_eq!(
+            incident.block.as_ref().unwrap().hash,
+            tx_hash,
+            "Wrong incident block hash",
+        );
+
+        assert_eq!(
+            incident.tx.as_ref().unwrap().hash,
+            tx_hash,
+            "Wrong incident transaction hash",
+        );
+
+        Ok(())
     })
     .await
     .expect("Failed to query incidents.");

@@ -91,11 +91,9 @@ fn assembly_script_validation_daemon(bytes: &[u8]) -> Result<Daemon, DataError> 
     Daemon::new_assembly_script("WASM_VALIDATE".to_string(), bytes, DaemonParameters::new())
 }
 
-const EMPTY_CTX: &str = "EMPTY_CTX";
-
 fn empty_ctx<T: BlockchainCtx>() -> BlockchainData<T> {
     BlockchainDataBuilder::<T>::new()
-        .build(EMPTY_CTX, EMPTY_CTX)
+        .build()
         .unwrap_or_else(|_| {
             panic!(
                 "BUG: `ChainCtxBuilder::<{}>::new().build` fails.",

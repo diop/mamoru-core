@@ -69,6 +69,9 @@ pub type BlockchainSpecificImports<T> = HashMap<&'static str, CtxImportFn<T>>;
 
 pub struct BlockchainDataBuilder<T> {
     data: T,
+    source: DataSource,
+    tx: Option<(Id, Hash)>,
+    block: Option<(Id, Hash)>,
 }
 
 impl<T: BlockchainCtx> Default for BlockchainDataBuilder<T> {
@@ -79,20 +82,42 @@ impl<T: BlockchainCtx> Default for BlockchainDataBuilder<T> {
 
 pub type TableDef = (&'static str, RecordBatch);
 
+pub type Id = String;
+pub type Hash = String;
+
+#[derive(Copy, Clone, Debug)]
+pub enum DataSource {
+    Mempool,
+    Block,
+}
+
 impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
     pub fn new() -> Self {
-        Self { data: T::empty() }
+        Self {
+            data: T::empty(),
+            source: DataSource::Block,
+            tx: None,
+            block: None,
+        }
     }
 
     pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
     }
 
-    pub fn build(
-        self,
-        tx_id: impl Into<String>,
-        tx_hash: impl Into<String>,
-    ) -> Result<BlockchainData<T>, DataError> {
+    pub fn set_mempool_source(&mut self) {
+        self.source = DataSource::Mempool;
+    }
+
+    pub fn set_tx_data(&mut self, tx_id: impl Into<Id>, tx_hash: impl Into<Hash>) {
+        self.tx = Some((tx_id.into(), tx_hash.into()));
+    }
+
+    pub fn set_block_data(&mut self, block_id: impl Into<Id>, block_hash: impl Into<Hash>) {
+        self.block = Some((block_id.into(), block_hash.into()));
+    }
+
+    pub fn build(self) -> Result<BlockchainData<T>, DataError> {
         let session = setup_session();
 
         for table in self.data.as_tables() {
@@ -102,8 +127,9 @@ impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
         Ok(BlockchainData {
             data: Arc::new(self.data),
             session,
-            tx_id: tx_id.into(),
-            tx_hash: tx_hash.into(),
+            source: self.source,
+            tx: self.tx,
+            block: self.block,
         })
     }
 
@@ -129,8 +155,9 @@ impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
 pub struct BlockchainData<T> {
     data: Arc<T>,
     session: SessionContext,
-    tx_id: String,
-    tx_hash: String,
+    source: DataSource,
+    tx: Option<(Id, Hash)>,
+    block: Option<(Id, Hash)>,
 }
 
 impl<T> Clone for BlockchainData<T> {
@@ -138,19 +165,24 @@ impl<T> Clone for BlockchainData<T> {
         Self {
             data: Arc::clone(&self.data),
             session: self.session.clone(),
-            tx_id: self.tx_id.clone(),
-            tx_hash: self.tx_hash.clone(),
+            tx: self.tx.clone(),
+            block: self.block.clone(),
+            source: self.source,
         }
     }
 }
 
 impl<T> BlockchainData<T> {
-    pub fn tx_id(&self) -> &str {
-        &self.tx_id
+    pub fn tx(&self) -> Option<(Id, Hash)> {
+        self.tx.clone()
     }
 
-    pub fn tx_hash(&self) -> &str {
-        &self.tx_hash
+    pub fn block(&self) -> Option<(Id, Hash)> {
+        self.block.clone()
+    }
+
+    pub fn source(&self) -> DataSource {
+        self.source
     }
 
     pub(crate) fn session(&self) -> &SessionContext {

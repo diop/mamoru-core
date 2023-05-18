@@ -3,7 +3,7 @@ use test_log::test;
 use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 use mamoru_sniffer::validation_chain::{
     BlockId, ChainType, DaemonMetadataContent, DaemonMetadataContentQuery, DaemonMetadataType,
-    IncidentReport, IncidentSeverity, IncidentSource, RegisterDaemonMetadataRequest, TransactionId,
+    IncidentReport, IncidentSeverity, RegisterDaemonMetadataRequest, SourceType, TransactionId,
 };
 
 use crate::validation_chain_tests::message_client;
@@ -58,16 +58,15 @@ async fn smoke() {
         .into_iter()
         .map(|rule_id| IncidentReport {
             daemon_id: rule_id,
-            source: IncidentSource::Transaction {
-                transaction: TransactionId {
-                    tx_id: "test_tx_id".to_string(),
-                    hash: "test_tx_id".to_string(),
-                },
-                block: Some(BlockId {
-                    block_id: "test_block_id".to_string(),
-                    hash: "test_block_id".to_string(),
-                }),
-            },
+            source: SourceType::Block,
+            tx: Some(TransactionId {
+                tx_id: "test_tx_id".to_string(),
+                hash: "test_tx_id".to_string(),
+            }),
+            block: Some(BlockId {
+                block_id: "test_block_id".to_string(),
+                hash: "test_block_id".to_string(),
+            }),
             chain: ChainType::SuiTestnet,
             incident: Incident {
                 severity: MamoruIncidentSeverity::Info,

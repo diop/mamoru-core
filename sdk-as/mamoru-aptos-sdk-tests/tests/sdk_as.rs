@@ -104,7 +104,9 @@ fn aptos_ctx() -> BlockchainData<AptosCtx> {
         },
     ]);
 
-    builder.build("test_tx", "test_digest").unwrap()
+    builder.set_tx_data("test_tx", "test_digest");
+
+    builder.build().unwrap()
 }
 
 #[test(tokio::test)]

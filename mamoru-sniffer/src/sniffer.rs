@@ -11,14 +11,15 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 
-use mamoru_core::{BlockchainCtx, BlockchainData, Daemon};
+use mamoru_core::{BlockchainCtx, BlockchainData, Daemon, DataSource};
 
+use crate::validation_chain::{BlockId, SourceType};
 use crate::{
     errors::SnifferError,
     from_env,
     validation_chain::{
-        ChainType, DaemonQueryResponseDto, IncidentReport, IncidentSource, MessageClient,
-        MessageClientConfig, QueryClient, QueryClientConfig, TransactionId,
+        ChainType, DaemonQueryResponseDto, IncidentReport, MessageClient, MessageClientConfig,
+        QueryClient, QueryClientConfig, TransactionId,
     },
 };
 
@@ -92,7 +93,10 @@ impl Sniffer {
 
     /// Reports to Validation Chain if the provided transaction matches
     /// any rule from the internal storage.
-    #[tracing::instrument(skip(ctx, self), fields(tx_id = ctx.tx_id(), tx_hash = ctx.tx_hash(), level = "debug"))]
+    #[tracing::instrument(
+        skip(ctx, self),
+        fields(tx = ?ctx.tx(), block = ?ctx.block(), source = ?ctx.source(), level = "debug")
+    )]
     pub async fn observe_data<T: BlockchainCtx>(&self, ctx: BlockchainData<T>) {
         let rules = self.rules.read().await;
         let futures: Vec<_> = rules
@@ -112,13 +116,12 @@ impl Sniffer {
                         for incident in verify_ctx.incidents {
                             let sent = self.report_tx.try_send(IncidentReport {
                                 daemon_id: daemon_id.clone(),
-                                source: IncidentSource::Transaction {
-                                    block: None,
-                                    transaction: TransactionId {
-                                        tx_id: ctx.tx_id().to_string(),
-                                        hash: ctx.tx_hash().to_string(),
-                                    },
+                                source: match ctx.source() {
+                                    DataSource::Mempool => SourceType::Mempool,
+                                    DataSource::Block => SourceType::Block,
                                 },
+                                tx: ctx.tx().map(|(tx_id, hash)| TransactionId { tx_id, hash }),
+                                block: ctx.block().map(|(block_id, hash)| BlockId { block_id, hash }),
                                 chain: self.chain_type,
                                 incident,
                             });

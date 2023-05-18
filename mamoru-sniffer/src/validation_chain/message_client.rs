@@ -1,10 +1,22 @@
+use std::{sync::Arc, time::Duration};
+
+use cosmrs::{
+    proto::traits::TypeUrl,
+    tx::{AccountNumber, Body, BodyBuilder, Fee, MessageExt, SequenceNumber, SignDoc, SignerInfo},
+    AccountId, Coin,
+};
+use prost::Message;
+use tokio::sync::Mutex;
+use tracing::error;
+
+use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
+
 pub use crate::validation_chain::proto::validation_chain::{
-    chain::ChainType, Block as BlockId, DaemonMetadataType, IncidentSeverity,
+    chain::ChainType, source::SourceType, Block as BlockId, DaemonMetadataType, IncidentSeverity,
     MsgCreateDaemonMetadataResponse, MsgRegisterDaemonResponse, MsgRegisterSnifferResponse,
     MsgReportIncidentResponse, MsgSubscribeDaemonsResponse, MsgUnregisterSnifferResponse,
     Transaction as TransactionId,
 };
-
 use crate::{
     errors::ValidationClientError,
     validation_chain::{
@@ -22,7 +34,7 @@ use crate::{
                 TxMsgData,
             },
             validation_chain::{
-                source::SourceType, Chain, CreateDaemonMetadataCommandRequestDto,
+                Chain, CreateDaemonMetadataCommandRequestDto,
                 DaemonMetadataContent as ProtoDaemonMetadataContent,
                 DaemonMetadataContentQuery as ProtoDaemonMetadataContentQuery,
                 DaemonMetadataContentType, DaemonMetadataParemeter,
@@ -35,16 +47,6 @@ use crate::{
         ClientResult, DaemonParameter, DaemonRelay,
     },
 };
-use cosmrs::{
-    proto::traits::TypeUrl,
-    tx::{AccountNumber, Body, BodyBuilder, Fee, MessageExt, SequenceNumber, SignDoc, SignerInfo},
-    AccountId, Coin,
-};
-use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
-use prost::Message;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
-use tracing::error;
 
 const MAX_RETRIES: usize = 5;
 const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
@@ -52,20 +54,11 @@ const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
 #[derive(Debug)]
 pub struct IncidentReport {
     pub daemon_id: String,
-    pub source: IncidentSource,
+    pub source: SourceType,
+    pub tx: Option<TransactionId>,
+    pub block: Option<BlockId>,
     pub chain: ChainType,
     pub incident: Incident,
-}
-
-/// Safer wrapper over part of [`IncidentReportCommandRequestDto`]
-#[derive(Debug)]
-pub enum IncidentSource {
-    Mempool,
-    Transaction {
-        // Sui doesn't have blocks at all
-        block: Option<BlockId>,
-        transaction: TransactionId,
-    },
 }
 
 /// Safer wrapper over of [`CreateDaemonMetadataCommandRequestDto`]
@@ -223,13 +216,6 @@ impl MessageClient {
         let report_messages: Vec<_> = reports
             .into_iter()
             .map(|report| {
-                let (source, block, tx) = match report.source {
-                    IncidentSource::Mempool => (SourceType::Mempool, None, None),
-                    IncidentSource::Transaction { block, transaction } => {
-                        (SourceType::Block, block, Some(transaction))
-                    }
-                };
-
                 let (severity, message, address, data) = {
                     let severity = match report.incident.severity {
                         MamoruIncidentSeverity::Info => IncidentSeverity::SeverityInfo,
@@ -252,10 +238,10 @@ impl MessageClient {
                         daemon_id: report.daemon_id,
                         sniffer: sniffer.clone(),
                         source: Some(Source {
-                            source_type: source.into(),
+                            source_type: report.source.into(),
                         }),
-                        block,
-                        tx,
+                        block: report.block,
+                        tx: report.tx,
                         chain: Some(Chain {
                             chain_type: report.chain.into(),
                         }),
