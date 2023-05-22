@@ -20,6 +20,7 @@ test:
 	cargo test --workspace
 
 lint:
+	cargo fmt --all --check
 	cargo clippy --workspace --tests
 
 nextest:

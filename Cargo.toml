@@ -5,7 +5,7 @@ members = [
     "blockchain-types/mamoru-aptos-types",
     "blockchain-types/mamoru-evm-types",
     "blockchain-types/mamoru-sui-types",
-    "cosmos-account-generator",
+    "mamoru-account",
     "mamoru-core",
     "mamoru-core-test-utils",
     "mamoru-sniffer",

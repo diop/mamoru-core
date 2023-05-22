@@ -114,7 +114,7 @@ impl ChainConfig {
     }
 
     fn default_account_id_prefix() -> String {
-        "cosmos".to_string()
+        "mamoru".to_string()
     }
 
     fn default_token_denominator() -> String {

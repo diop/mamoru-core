@@ -18,7 +18,7 @@ mod query_client;
 mod sniffer;
 
 /// Bech32 prefix for an account
-const ACCOUNT_PREFIX: &str = "cosmos";
+const ACCOUNT_PREFIX: &str = "mamoru";
 
 /// Denom name
 const DENOM: &str = "token";
