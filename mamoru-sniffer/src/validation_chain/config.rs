@@ -1,11 +1,14 @@
-use crate::{errors::ValidationClientError, from_env_or_fail, validation_chain::ClientResult};
+use std::sync::Arc;
+
 use cosmrs::{
     crypto::{secp256k1, PublicKey},
     tendermint::chain,
     AccountId, Denom,
 };
+use serde::de::Error as SerdeError;
 use serde::{Deserialize, Deserializer};
-use std::sync::Arc;
+
+use crate::{errors::ValidationClientError, from_env_or_fail, validation_chain::ClientResult};
 
 /// The configuration required for creating MessageClient
 #[derive(Deserialize, Clone)]
@@ -102,9 +105,15 @@ pub struct ChainConfig {
     pub account_id_prefix: String,
     #[serde(default = "ChainConfig::default_token_denominator")]
     pub token_denominator: String,
-    #[serde(default = "ChainConfig::default_tx_gas_limit")]
+    #[serde(
+        default = "ChainConfig::default_tx_gas_limit",
+        deserialize_with = "u64_from_string"
+    )]
     pub tx_gas_limit: u64,
-    #[serde(default = "ChainConfig::default_tx_fee_amount")]
+    #[serde(
+        default = "ChainConfig::default_tx_fee_amount",
+        deserialize_with = "u128_from_string"
+    )]
     pub tx_fee_amount: u128,
 }
 
@@ -165,4 +174,52 @@ where
     let key = secp256k1::SigningKey::from_bytes(&bytes).expect("Can not parse private key bytes");
 
     Ok(Arc::new(key))
+}
+
+fn u128_from_string<'de, D>(deserializer: D) -> Result<u128, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let the_string: String = Deserialize::deserialize(deserializer)?;
+    let val = the_string
+        .parse()
+        .map_err(|err| SerdeError::custom(format!("Failed to parse number: {}", &err)))?;
+
+    Ok(val)
+}
+
+fn u64_from_string<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let the_string: String = Deserialize::deserialize(deserializer)?;
+    let val = the_string
+        .parse()
+        .map_err(|err| SerdeError::custom(format!("Failed to parse number: {}", &err)))?;
+
+    Ok(val)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Deserialize, Clone)]
+    struct TestConfig {
+        #[serde(flatten)]
+        nested: ChainConfig,
+    }
+
+    #[test]
+    fn flatten_number_parsing_works() {
+        let data = vec![
+            (String::from("TX_FEE_AMOUNT"), String::from("100000")),
+            (String::from("TX_GAS_LIMIT"), String::from("100000")),
+        ];
+
+        let cfg: TestConfig = envy::from_iter(data).unwrap();
+
+        assert_eq!(cfg.nested.tx_gas_limit, 100_000);
+        assert_eq!(cfg.nested.tx_fee_amount, 100_000);
+    }
 }
