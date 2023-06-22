@@ -1,7 +1,13 @@
+use std::error::Error;
+
 use cosmrs::{
     crypto::{secp256k1, PublicKey},
     AccountId, Coin,
 };
+use serde::Serialize;
+use tokio_retry::{strategy::FixedInterval, Action, Retry};
+
+use mamoru_sniffer::validation_chain::SendMode;
 use mamoru_sniffer::{
     validation_chain::{
         AccountConfig, ChainType, ConnectionConfig, MessageClient, MessageClientConfig,
@@ -9,9 +15,6 @@ use mamoru_sniffer::{
     },
     Sniffer, SnifferConfig,
 };
-use serde::Serialize;
-use std::error::Error;
-use tokio_retry::{strategy::FixedInterval, Action, Retry};
 
 mod message_client;
 mod query_client;
@@ -119,6 +122,7 @@ async fn message_client_config() -> MessageClientConfig {
         connection: ConnectionConfig::from_env(),
         chain: Default::default(),
         account: AccountConfig::new(key),
+        send_mode: SendMode::Block,
     }
 }
 

@@ -12,10 +12,7 @@ use serde_json::{Map, Value};
 
 use crate::blockchain_data::BlockchainData;
 use crate::{
-    daemon::{
-        incident::{IncidentDataStruct, IncidentSeverity},
-        Incident,
-    },
+    daemon::{incident::IncidentSeverity, Incident},
     BlockchainCtx, DataError,
 };
 
@@ -56,7 +53,7 @@ impl SqlExecutor {
                 severity: self.incident_data.severity.clone(),
                 message: self.incident_data.message.clone(),
                 address: "".to_string(),
-                data: IncidentDataStruct::new(),
+                data: vec![],
             }])
         } else {
             Ok(vec![])

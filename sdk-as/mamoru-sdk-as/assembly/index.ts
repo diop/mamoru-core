@@ -4,17 +4,7 @@ import { JSON } from "assemblyscript-json/assembly";
 import { _env_assert, _mamoru_http, _mamoru_parameter, _mamoru_query, _mamoru_report, } from "./imports";
 
 import { HttpMethod, HttpRequest, HttpResponse } from "./http";
-import {
-    BooleanDataValue,
-    Incident,
-    IncidentDataStruct,
-    IncidentSeverity,
-    ListDataValue,
-    NullDataValue,
-    NumberDataValue,
-    StringDataValue,
-    StructDataValue
-} from "./incident";
+import { Incident, IncidentSeverity, } from "./incident";
 import { i128, u128, Value } from "./value";
 
 export {
@@ -25,13 +15,6 @@ export {
     HttpRequest,
     HttpResponse,
     IncidentSeverity,
-    IncidentDataStruct,
-    NumberDataValue,
-    StructDataValue,
-    NullDataValue,
-    StringDataValue,
-    BooleanDataValue,
-    ListDataValue,
     Value,
 };
 
@@ -86,23 +69,13 @@ export function query(query: string): JSON.Obj[] {
  * Reports an incident to Validation Chain.
  *
  * @example
- * let data = new IncidentDataStruct();
  *
- * data.addNull("null");
- * data.addNumber("number", 42.0);
- * data.addString("string", "hello");
- * data.addBoolean("boolean", true);
- * data.addList("list", [
- *     new StringDataValue("first"),
- *     new StringDataValue("second"),
- * ]);
- *
- * report(IncidentSeverity.Alert, "Test", data);
+ * report(IncidentSeverity.Alert, "Test");
  */
 export function report(
     severity: IncidentSeverity,
     message: string,
-    data: IncidentDataStruct | null = null,
+    data: Uint8Array | null = null,
     address: string = "",
 ): void {
     _mamoru_report((new Incident(severity, message, data, address)).toJSON())

@@ -1,9 +1,21 @@
+use std::str::FromStr;
+
+use serde::{Deserialize, Deserializer};
+use strum::VariantNames;
+use tracing::{error, warn};
+
+use mamoru_core::{Daemon, IncidentData};
+
+use crate::validation_chain::{
+    proto::validation_chain::DaemonMetadataContentType, ChainType, DaemonParameter,
+    DaemonQueryResponseDto, IncidentSeverity,
+};
+
 pub mod validation_chain {
     pub use super::includes::validationchain::validationchain::*;
 }
 
 pub mod cosmos {
-    pub use super::includes::hack::TxMsgData;
     pub use cosmrs::proto::cosmos::*;
 }
 
@@ -13,16 +25,6 @@ mod includes {
 
     tonic::include_proto!("includes");
 }
-
-use crate::validation_chain::{
-    proto::validation_chain::{value::Kind, DaemonMetadataContentType, ListValue, Struct, Value},
-    ChainType, DaemonParameter, DaemonQueryResponseDto, IncidentSeverity,
-};
-use mamoru_core::{Daemon, IncidentData, IncidentDataStruct, IncidentDataValue};
-use serde::{Deserialize, Deserializer};
-use std::str::FromStr;
-use strum::VariantNames;
-use tracing::{error, warn};
 
 impl From<DaemonQueryResponseDto> for Vec<Daemon> {
     fn from(value: DaemonQueryResponseDto) -> Self {
@@ -83,35 +85,6 @@ impl From<IncidentSeverity> for mamoru_core::IncidentSeverity {
             IncidentSeverity::SeverityError => Self::Error,
             IncidentSeverity::SeverityAlert => Self::Alert,
         }
-    }
-}
-
-impl From<IncidentDataStruct> for Struct {
-    fn from(value: IncidentDataStruct) -> Self {
-        Struct {
-            fields: value
-                .fields()
-                .into_iter()
-                .map(|(key, value)| (key, value.into()))
-                .collect(),
-        }
-    }
-}
-
-impl From<IncidentDataValue> for Value {
-    fn from(value: IncidentDataValue) -> Self {
-        let kind = match value {
-            IncidentDataValue::Null => Kind::NullValue(0),
-            IncidentDataValue::Number(number) => Kind::NumberValue(number),
-            IncidentDataValue::String(string) => Kind::StringValue(string),
-            IncidentDataValue::Bool(bool) => Kind::BoolValue(bool),
-            IncidentDataValue::Struct(struct_) => Kind::StructValue((*struct_).into()),
-            IncidentDataValue::List(list) => Kind::ListValue(ListValue {
-                values: list.into_iter().map(Into::into).collect(),
-            }),
-        };
-
-        Value { kind: Some(kind) }
     }
 }
 

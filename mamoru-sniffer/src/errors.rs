@@ -41,6 +41,9 @@ pub enum ValidationClientError {
 
     #[error("Validation chain returned an error")]
     CosmosSdkError(#[from] CosmosSdkError),
+
+    #[error("Transaction fetch timeout")]
+    TxFetchTimeout,
 }
 
 impl ValidationClientError {

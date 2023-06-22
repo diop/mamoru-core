@@ -1,7 +1,6 @@
 static SERVICES: &[&str] = &[
     "./proto/validation-chain/proto/validationchain/validationchain/tx.proto",
     "./proto/validation-chain/proto/validationchain/validationchain/query.proto",
-    "./proto/hack/tx_msg_data_cosmos_v0_46.proto",
 ];
 
 static INCLUDES: &[&str] = &["./proto/validation-chain/proto/", "./proto/"];

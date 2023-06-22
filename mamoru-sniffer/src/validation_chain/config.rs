@@ -21,6 +21,30 @@ pub struct MessageClientConfig {
 
     #[serde(flatten)]
     pub account: AccountConfig,
+
+    #[serde(default)]
+    pub send_mode: SendMode,
+}
+
+#[derive(Deserialize, Copy, Clone, Debug)]
+pub enum SendMode {
+    /// Send a transaction and wait for it to be included in a block.
+    /// You will receive a complete tx response.
+    /// This mode is useful for testing.
+    Block,
+    /// Send a transaction and return immediately.
+    /// You will receive an empty tx response.
+    Sync,
+    /// Send a transaction and return immediately. The transaction will be
+    /// included in a block asynchronously.
+    /// You will receive an empty tx response.
+    Async,
+}
+
+impl Default for SendMode {
+    fn default() -> Self {
+        Self::Sync
+    }
 }
 
 impl MessageClientConfig {
@@ -171,7 +195,7 @@ where
 {
     let base64_string: String = Deserialize::deserialize(deserializer)?;
     let bytes = base64::decode(base64_string).expect("Can not parse private key base64");
-    let key = secp256k1::SigningKey::from_bytes(&bytes).expect("Can not parse private key bytes");
+    let key = secp256k1::SigningKey::from_slice(&bytes).expect("Can not parse private key bytes");
 
     Ok(Arc::new(key))
 }

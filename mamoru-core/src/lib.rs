@@ -6,7 +6,7 @@ pub use blockchain_data::{
 };
 pub use daemon::{
     assembly_script,
-    incident::{Incident, IncidentDataStruct, IncidentDataValue, IncidentSeverity},
+    incident::{Incident, IncidentSeverity},
     sql::IncidentData,
     Daemon, DaemonParameters,
 };

@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use cosmrs::proto::cosmos::base::abci::v1beta1::TxMsgData;
 use cosmrs::{
     proto::traits::TypeUrl,
     tx::{AccountNumber, Body, BodyBuilder, Fee, MessageExt, SequenceNumber, SignDoc, SignerInfo},
@@ -11,12 +12,14 @@ use tracing::error;
 
 use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 
+use crate::validation_chain::proto::cosmos::tx::v1beta1::GetTxRequest;
 pub use crate::validation_chain::proto::validation_chain::{
     chain::ChainType, source::SourceType, Block as BlockId, DaemonMetadataType, IncidentSeverity,
     MsgCreateDaemonMetadataResponse, MsgRegisterDaemonResponse, MsgRegisterSnifferResponse,
     MsgReportIncidentResponse, MsgSubscribeDaemonsResponse, MsgUnregisterSnifferResponse,
     Transaction as TransactionId,
 };
+use crate::validation_chain::SendMode;
 use crate::{
     errors::ValidationClientError,
     validation_chain::{
@@ -31,7 +34,6 @@ use crate::{
                     service_client::ServiceClient as CosmosServiceClient, BroadcastMode,
                     BroadcastTxRequest,
                 },
-                TxMsgData,
             },
             validation_chain::{
                 Chain, CreateDaemonMetadataCommandRequestDto,
@@ -50,6 +52,9 @@ use crate::{
 
 const MAX_RETRIES: usize = 5;
 const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
+
+const TX_DATA_MAX_RETRIES: usize = 20;
+const TX_DATA_RETRY_SLEEP_TIME: Duration = Duration::from_millis(200);
 
 #[derive(Debug)]
 pub struct IncidentReport {
@@ -163,13 +168,16 @@ impl MessageClient {
         }];
 
         let mut result = self
-            .sign_and_broadcast_txs(vec![MsgRegisterSniffer {
-                creator: sniffer.clone(),
-                sniffer: Some(SnifferRegisterCommandRequestDto {
-                    sniffer,
-                    chains: chain_vec,
-                }),
-            }])
+            .sign_and_broadcast_txs(
+                vec![MsgRegisterSniffer {
+                    creator: sniffer.clone(),
+                    sniffer: Some(SnifferRegisterCommandRequestDto {
+                        sniffer,
+                        chains: chain_vec,
+                    }),
+                }],
+                1,
+            )
             .await?;
 
         Ok(result.remove(0))
@@ -179,10 +187,13 @@ impl MessageClient {
         let sniffer = self.config.address().to_string();
 
         let mut result = self
-            .sign_and_broadcast_txs(vec![MsgUnregisterSniffer {
-                creator: sniffer.clone(),
-                sniffer: Some(SnifferUnregisterCommandRequestDto { sniffer }),
-            }])
+            .sign_and_broadcast_txs(
+                vec![MsgUnregisterSniffer {
+                    creator: sniffer.clone(),
+                    sniffer: Some(SnifferUnregisterCommandRequestDto { sniffer }),
+                }],
+                1,
+            )
             .await?;
 
         Ok(result.remove(0))
@@ -195,13 +206,16 @@ impl MessageClient {
         let sniffer = self.config.address().to_string();
 
         let mut result = self
-            .sign_and_broadcast_txs(vec![MsgSubscribeDaemons {
-                creator: sniffer.clone(),
-                daemons: Some(DaemonsSubscribeCommandRequestDto {
-                    daemons_ids,
-                    sniffer,
-                }),
-            }])
+            .sign_and_broadcast_txs(
+                vec![MsgSubscribeDaemons {
+                    creator: sniffer.clone(),
+                    daemons: Some(DaemonsSubscribeCommandRequestDto {
+                        daemons_ids,
+                        sniffer,
+                    }),
+                }],
+                1,
+            )
             .await?;
 
         Ok(result.remove(0))
@@ -228,7 +242,7 @@ impl MessageClient {
                         severity,
                         report.incident.message,
                         report.incident.address,
-                        report.incident.data.into(),
+                        report.incident.data,
                     )
                 };
 
@@ -248,13 +262,17 @@ impl MessageClient {
                         severity: severity as i32,
                         message,
                         address,
-                        data: Some(data),
+                        data,
                     }),
                 }
             })
             .collect();
 
-        let result = self.sign_and_broadcast_txs(report_messages).await?;
+        let messages_len = report_messages.len();
+
+        let result = self
+            .sign_and_broadcast_txs(report_messages, messages_len)
+            .await?;
 
         Ok(result)
     }
@@ -269,21 +287,24 @@ impl MessageClient {
         let sniffer = self.config.address().to_string();
 
         let mut result = self
-            .sign_and_broadcast_txs(vec![MsgRegisterDaemon {
-                creator: sniffer,
-                daemon: Some(DaemonRegisterCommandRequestDto {
-                    chain: Some(Chain {
-                        chain_type: chain.into(),
+            .sign_and_broadcast_txs(
+                vec![MsgRegisterDaemon {
+                    creator: sniffer,
+                    daemon: Some(DaemonRegisterCommandRequestDto {
+                        chain: Some(Chain {
+                            chain_type: chain.into(),
+                        }),
+                        daemon_metadata_id,
+                        parameters,
+                        relay: Some(relay.unwrap_or(DaemonRelay {
+                            r#type: 0,
+                            address: "".to_string(),
+                            call: "".to_string(),
+                        })),
                     }),
-                    daemon_metadata_id,
-                    parameters,
-                    relay: Some(relay.unwrap_or(DaemonRelay {
-                        r#type: 0,
-                        address: "".to_string(),
-                        call: "".to_string(),
-                    })),
-                }),
-            }])
+                }],
+                1,
+            )
             .await?;
 
         Ok(result.remove(0))
@@ -296,46 +317,49 @@ impl MessageClient {
         let sniffer = self.config.address().to_string();
 
         let mut result = self
-            .sign_and_broadcast_txs(vec![MsgCreateDaemonMetadata {
-                creator: sniffer,
-                daemon_metadata: Some(CreateDaemonMetadataCommandRequestDto {
-                    logo_url: request.logo_url,
-                    metadata_type: request.kind as i32,
-                    title: request.title,
-                    description: request.description,
-                    tags: request.tags,
-                    supported_chains: request
-                        .supported_chains
-                        .into_iter()
-                        .map(|chain_type| Chain {
-                            chain_type: chain_type as i32,
-                        })
-                        .collect(),
-                    parameters: request.parameters,
-                    content: Some(match request.content {
-                        DaemonMetadataContent::Sql { queries } => ProtoDaemonMetadataContent {
-                            r#type: DaemonMetadataContentType::Sql as i32,
-                            query: queries
-                                .into_iter()
-                                .map(|query| ProtoDaemonMetadataContentQuery {
-                                    query: query.query,
-                                    incident_message: query.incident_message,
-                                    severity: query.severity as i32,
-                                })
-                                .collect(),
-                            wasm_module: "".to_string(),
-                        },
-                        DaemonMetadataContent::Wasm { module } => ProtoDaemonMetadataContent {
-                            r#type: DaemonMetadataContentType::Wasm as i32,
-                            query: vec![],
-                            wasm_module: base64::encode(module),
-                        },
-                        DaemonMetadataContent::Undefined => {
-                            unreachable!("DaemonMetadataContent::Undefined is invalid.");
-                        }
+            .sign_and_broadcast_txs(
+                vec![MsgCreateDaemonMetadata {
+                    creator: sniffer,
+                    daemon_metadata: Some(CreateDaemonMetadataCommandRequestDto {
+                        logo_url: request.logo_url,
+                        metadata_type: request.kind as i32,
+                        title: request.title,
+                        description: request.description,
+                        tags: request.tags,
+                        supported_chains: request
+                            .supported_chains
+                            .into_iter()
+                            .map(|chain_type| Chain {
+                                chain_type: chain_type as i32,
+                            })
+                            .collect(),
+                        parameters: request.parameters,
+                        content: Some(match request.content {
+                            DaemonMetadataContent::Sql { queries } => ProtoDaemonMetadataContent {
+                                r#type: DaemonMetadataContentType::Sql as i32,
+                                query: queries
+                                    .into_iter()
+                                    .map(|query| ProtoDaemonMetadataContentQuery {
+                                        query: query.query,
+                                        incident_message: query.incident_message,
+                                        severity: query.severity as i32,
+                                    })
+                                    .collect(),
+                                wasm_module: "".to_string(),
+                            },
+                            DaemonMetadataContent::Wasm { module } => ProtoDaemonMetadataContent {
+                                r#type: DaemonMetadataContentType::Wasm as i32,
+                                query: vec![],
+                                wasm_module: base64::encode(module),
+                            },
+                            DaemonMetadataContent::Undefined => {
+                                unreachable!("DaemonMetadataContent::Undefined is invalid.");
+                            }
+                        }),
                     }),
-                }),
-            }])
+                }],
+                1,
+            )
             .await?;
 
         Ok(result.remove(0))
@@ -346,6 +370,7 @@ impl MessageClient {
     async fn sign_and_broadcast_txs<T, R>(
         &self,
         messages: impl IntoIterator<Item = T>,
+        messages_len: usize,
     ) -> ClientResult<Vec<R>>
     where
         T: Message + TypeUrl,
@@ -360,15 +385,21 @@ impl MessageClient {
         let tx_body = builder.finish();
 
         let mut account_data = self.account_data.lock().await;
-        let mut tx_response_objects = vec![];
+        let mut tx_response_objects = Vec::with_capacity(messages_len);
 
         for _ in 0..MAX_RETRIES {
             match self
                 .sign_and_broadcast_tx_impl(tx_body.clone(), *account_data)
                 .await
             {
-                Ok(tx_responses) => {
-                    tx_response_objects = tx_responses;
+                Ok(tx_hash) => {
+                    if let SendMode::Block = self.config.send_mode {
+                        tx_response_objects = self.fetch_response_objects(tx_hash).await?;
+                    } else {
+                        for _ in 0..messages_len {
+                            tx_response_objects.push(R::default())
+                        }
+                    }
 
                     break;
                 }
@@ -397,14 +428,51 @@ impl MessageClient {
         Ok(tx_response_objects)
     }
 
-    async fn sign_and_broadcast_tx_impl<R>(
-        &self,
-        tx_body: Body,
-        account_data: AccountDataCache,
-    ) -> ClientResult<Vec<R>>
+    async fn fetch_response_objects<R>(&self, tx_hash: String) -> ClientResult<Vec<R>>
     where
         R: DeserializableMessage,
     {
+        for _ in 0..TX_DATA_MAX_RETRIES {
+            let tx_response = self
+                .service_client
+                .clone()
+                .get_tx(GetTxRequest {
+                    hash: tx_hash.clone(),
+                })
+                .await;
+
+            match tx_response {
+                Ok(tx_response) => {
+                    let get_tx_response = tx_response.into_inner();
+                    let tx_response = get_tx_response.tx_response.expect("Always exists.");
+                    let tx_response_objects = make_responses(&tx_response.data);
+
+                    return match tx_response.try_into().ok() {
+                        // If code is an error code, return proper error
+                        Some(error) => Err(ValidationClientError::CosmosSdkError(error)),
+                        // Ok otherwise
+                        None => Ok(tx_response_objects),
+                    };
+                }
+                Err(err) => match err.code() {
+                    tonic::Code::NotFound => {
+                        tokio::time::sleep(TX_DATA_RETRY_SLEEP_TIME).await;
+                    }
+                    _ => {
+                        return Err(ValidationClientError::Request(err));
+                    }
+                },
+            }
+        }
+
+        Err(ValidationClientError::TxFetchTimeout)
+    }
+
+    async fn sign_and_broadcast_tx_impl(
+        &self,
+        tx_body: Body,
+        account_data: AccountDataCache,
+    ) -> ClientResult<String> {
         let AccountDataCache { number, sequence } = account_data;
         let auth_info = SignerInfo::single_direct(Some(self.config.public_key()), sequence)
             .auth_info(Fee::from_amount_and_gas(
@@ -424,6 +492,12 @@ impl MessageClient {
             .sign(self.config.private_key())
             .map_err(ValidationClientError::SignTransaction)?;
 
+        let mode = match self.config.send_mode {
+            SendMode::Block => BroadcastMode::Sync,
+            SendMode::Sync => BroadcastMode::Sync,
+            SendMode::Async => BroadcastMode::Async,
+        };
+
         let response = self
             .service_client
             .clone()
@@ -431,20 +505,14 @@ impl MessageClient {
                 tx_bytes: tx_raw
                     .to_bytes()
                     .map_err(ValidationClientError::TransactionToBytes)?,
-                mode: BroadcastMode::Block.into(),
+                mode: mode.into(),
             })
             .await?
             .into_inner();
 
         let tx_response = response.tx_response.expect("Always exists.");
-        let tx_response_objects = make_responses(&tx_response.data);
 
-        match tx_response.try_into().ok() {
-            // If code is an error code, return proper error
-            Some(error) => Err(ValidationClientError::CosmosSdkError(error)),
-            // Ok otherwise
-            None => Ok(tx_response_objects),
-        }
+        Ok(tx_response.txhash)
     }
 }
 

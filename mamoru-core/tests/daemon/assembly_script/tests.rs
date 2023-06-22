@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use expect_test::expect;
 use test_log::test;
 
@@ -299,24 +297,11 @@ async fn incident_report_data_deserialization() {
     let ctx = data_ctx("DUMMY_HASH");
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import {report, IncidentSeverity, IncidentDataStruct, StringDataValue} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {report, IncidentSeverity} from "@mamoru-ai/mamoru-sdk-as/assembly";
 
         export function main(): void {
-            let dataNested = new IncidentDataStruct();
-            dataNested.addString("string", "nested");
-
-            let data = new IncidentDataStruct();
-
-            data.addNull("null");
-            data.addNumber("number", 42.0);
-            data.addString("string", "hello");
-            data.addBoolean("boolean", true);
-            data.addList("list", [
-                new StringDataValue("first"),
-                new StringDataValue("second"),
-            ]);
-            data.addStruct("struct", dataNested);
-
+            let data = new Uint8Array(4);
+            data.set([0, 1, 2, 3])
 
             report(IncidentSeverity.Alert, "Test", data, "0x0");
         }
@@ -339,41 +324,5 @@ async fn incident_report_data_deserialization() {
     assert_eq!(incident.message, "Test");
     assert_eq!(incident.address, "0x0");
 
-    // important to use `BTreeMap` instead of `HashMap` to have stable key ordering for `assert_debug_eq`
-    let data: BTreeMap<_, _> = incident.data.fields().into_iter().collect();
-
-    expect![[r#"
-        {
-            "boolean": Bool(
-                true,
-            ),
-            "list": List(
-                [
-                    String(
-                        "first",
-                    ),
-                    String(
-                        "second",
-                    ),
-                ],
-            ),
-            "null": Null,
-            "number": Number(
-                42.0,
-            ),
-            "string": String(
-                "hello",
-            ),
-            "struct": Struct(
-                IncidentDataStruct {
-                    fields: {
-                        "string": String(
-                            "nested",
-                        ),
-                    },
-                },
-            ),
-        }
-    "#]]
-    .assert_debug_eq(&data);
+    assert_eq!(&incident.data, &[0, 1, 2, 3]);
 }
