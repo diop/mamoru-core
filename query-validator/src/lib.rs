@@ -1,8 +1,9 @@
 pub use error::*;
 use mamoru_aptos_types::AptosCtx;
+pub use mamoru_core::DaemonParameters;
 use mamoru_core::{
-    BlockchainCtx, BlockchainData, BlockchainDataBuilder, Daemon, DaemonParameters, DataError,
-    IncidentData, IncidentSeverity,
+    BlockchainCtx, BlockchainData, BlockchainDataBuilder, Daemon, DataError, IncidentData,
+    IncidentSeverity,
 };
 use mamoru_evm_types::EvmCtx;
 use mamoru_sui_types::SuiCtx;
@@ -17,24 +18,39 @@ pub enum ChainType {
     Aptos,
 }
 
+/// Validates if the query renders without errors.
+pub fn validate_sql_renders(
+    query: &str,
+    parameters: DaemonParameters,
+) -> Result<(), ValidateError> {
+    match sql_validation_daemon(query, parameters) {
+        Err(DataError::RenderSql(err)) => Err(ValidateError::RenderSql(err)),
+        _ => Ok(()),
+    }
+}
+
 /// Validates an SQL Daemon query against an empty database.
-pub async fn validate_sql(chain: ChainType, query: &str) -> Result<(), ValidateError> {
+pub async fn validate_sql(
+    chain: ChainType,
+    query: &str,
+    parameters: DaemonParameters,
+) -> Result<(), ValidateError> {
     let result = match chain {
         ChainType::Sui => {
             let ctx = empty_ctx::<SuiCtx>();
-            let daemon = sql_validation_daemon(query)?;
+            let daemon = sql_validation_daemon(query, parameters)?;
 
             daemon.verify(&ctx).await?
         }
         ChainType::Evm => {
             let ctx = empty_ctx::<EvmCtx>();
-            let daemon = sql_validation_daemon(query)?;
+            let daemon = sql_validation_daemon(query, parameters)?;
 
             daemon.verify(&ctx).await?
         }
         ChainType::Aptos => {
             let ctx = empty_ctx::<AptosCtx>();
-            let daemon = sql_validation_daemon(query)?;
+            let daemon = sql_validation_daemon(query, parameters)?;
 
             daemon.verify(&ctx).await?
         }
@@ -76,7 +92,7 @@ pub async fn validate_assembly_script(chain: ChainType, bytes: &[u8]) -> Result<
     Ok(())
 }
 
-fn sql_validation_daemon(query: &str) -> Result<Daemon, DataError> {
+fn sql_validation_daemon(query: &str, parameters: DaemonParameters) -> Result<Daemon, DataError> {
     Daemon::new_sql(
         "QUERY_VALIDATE".to_string(),
         query,
@@ -84,11 +100,16 @@ fn sql_validation_daemon(query: &str) -> Result<Daemon, DataError> {
             message: "QUERY_VALIDATE".to_string(),
             severity: IncidentSeverity::Info,
         },
+        parameters,
     )
 }
 
 fn assembly_script_validation_daemon(bytes: &[u8]) -> Result<Daemon, DataError> {
-    Daemon::new_assembly_script("WASM_VALIDATE".to_string(), bytes, DaemonParameters::new())
+    Daemon::new_assembly_script(
+        "WASM_VALIDATE".to_string(),
+        bytes,
+        DaemonParameters::default(),
+    )
 }
 
 fn empty_ctx<T: BlockchainCtx>() -> BlockchainData<T> {
@@ -125,26 +146,54 @@ mod tests {
 
     #[tokio::test]
     async fn valid_expression_ok() {
-        let result = validate_sql(ChainType::Sui, "SELECT * FROM transactions").await;
+        let result = validate_sql(
+            ChainType::Sui,
+            "SELECT * FROM transactions",
+            DaemonParameters::default(),
+        )
+        .await;
 
         assert!(result.is_ok())
     }
 
     #[tokio::test]
     async fn always_true_expression_fails() {
-        let result = validate_sql(ChainType::Sui, "SELECT 1").await;
+        let result = validate_sql(ChainType::Sui, "SELECT 1", DaemonParameters::default()).await;
 
         assert!(matches!(result, Err(ValidateError::MatchesEmptyDatabase)))
     }
 
     #[tokio::test]
     async fn wrong_table_name_fails() {
-        let result = validate_sql(ChainType::Sui, "SELECT * FROM THIS_TABLE_DOES_NOT_EXIST").await;
+        let result = validate_sql(
+            ChainType::Sui,
+            "SELECT * FROM THIS_TABLE_DOES_NOT_EXIST",
+            DaemonParameters::default(),
+        )
+        .await;
 
         assert!(matches!(
             result,
             Err(ValidateError::DataError(DataError::PlanQuery(_)))
         ))
+    }
+
+    #[test]
+    fn validate_sql_renders_ok() {
+        let result =
+            validate_sql_renders("SELECT * FROM transactions", DaemonParameters::default());
+
+        assert!(result.is_ok())
+    }
+
+    #[test]
+    fn validate_sql_renders_fails_if_missing_parameter() {
+        let result = validate_sql_renders(
+            "SELECT * FROM transactions WHERE block_number = {{block_number}}",
+            DaemonParameters::default(),
+        );
+
+        assert!(matches!(result, Err(ValidateError::RenderSql(_))))
     }
 
     #[tokio::test]

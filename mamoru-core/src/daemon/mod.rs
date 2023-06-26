@@ -40,8 +40,9 @@ impl Daemon {
         id: String,
         expression: &str,
         incident_data: IncidentData,
+        parameters: DaemonParameters,
     ) -> Result<Self, DataError> {
-        let executor = Executor::Sql(SqlExecutor::new(expression, incident_data)?);
+        let executor = Executor::Sql(SqlExecutor::new(expression, incident_data, parameters)?);
 
         Ok(Self::new(id, executor))
     }

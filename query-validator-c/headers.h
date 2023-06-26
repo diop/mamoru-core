@@ -37,6 +37,8 @@ FfiChainType_t
 #endif
 ;
 
+typedef struct FfiDaemonParameters FfiDaemonParameters_t;
+
 
 #include <stdbool.h>
 
@@ -48,9 +50,20 @@ typedef struct FfiValidationResult {
 
 } FfiValidationResult_t;
 
+/** \brief
+ *  Drops `parameters` argument.
+ */
 FfiValidationResult_t ffi_validate_sql (
     FfiChainType_t chain,
-    char const * query);
+    char const * query,
+    FfiDaemonParameters_t * parameters);
+
+/** \brief
+ *  Drops `parameters` argument.
+ */
+FfiValidationResult_t ffi_validate_sql_renders (
+    char const * query,
+    FfiDaemonParameters_t * parameters);
 
 /** \brief
  *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
@@ -85,6 +98,13 @@ FfiValidationResult_t ffi_validate_assembly_script (
 
 void ffi_drop_validation_result (
     FfiValidationResult_t result);
+
+FfiDaemonParameters_t * ffi_new_daemon_parameters (void);
+
+void ffi_append_daemon_parameter (
+    FfiDaemonParameters_t * parameters,
+    char const * key,
+    char const * value);
 
 
 #ifdef __cplusplus

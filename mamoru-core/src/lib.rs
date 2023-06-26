@@ -10,7 +10,7 @@ pub use daemon::{
     sql::IncidentData,
     Daemon, DaemonParameters,
 };
-pub use errors::{DataError, ValueError};
+pub use errors::{DataError, RenderError, ValueError};
 
 mod blockchain_data;
 mod daemon;

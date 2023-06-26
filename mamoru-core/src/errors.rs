@@ -1,4 +1,6 @@
 use std::error::Error;
+
+pub use handlebars::RenderError;
 use thiserror::Error;
 use wasmer::{CompileError, ExportError, InstantiationError, RuntimeError};
 
@@ -12,6 +14,9 @@ pub enum DataError {
 
     #[error("Failed to register RecordBatch in the internal database.")]
     RegisterRecordBatch(datafusion::error::DataFusionError),
+
+    #[error("Failed to render SQL: {0}")]
+    RenderSql(RenderError),
 
     #[error("Failed to parse SQL: {0}")]
     ParseSql(datafusion::sql::sqlparser::parser::ParserError),

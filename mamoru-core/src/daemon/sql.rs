@@ -8,12 +8,13 @@ use datafusion::{
         sqlparser,
     },
 };
+use handlebars::Handlebars;
 use serde_json::{Map, Value};
 
 use crate::blockchain_data::BlockchainData;
 use crate::{
     daemon::{incident::IncidentSeverity, Incident},
-    BlockchainCtx, DataError,
+    BlockchainCtx, DaemonParameters, DataError,
 };
 
 pub(crate) type SqlQueryOutputs = Vec<Map<String, Value>>;
@@ -33,8 +34,14 @@ pub struct IncidentData {
 }
 
 impl SqlExecutor {
-    pub fn new(expression: &str, incident_data: IncidentData) -> Result<Self, DataError> {
-        let query = SqlQuery::new(expression)?;
+    pub fn new(
+        expression: &str,
+        incident_data: IncidentData,
+        params: DaemonParameters,
+    ) -> Result<Self, DataError> {
+        let expression = substitute_parameters(expression, params)?;
+
+        let query = SqlQuery::new(&expression)?;
 
         Ok(Self {
             query,
@@ -59,6 +66,17 @@ impl SqlExecutor {
             Ok(vec![])
         }
     }
+}
+
+fn substitute_parameters(expression: &str, params: DaemonParameters) -> Result<String, DataError> {
+    let mut handlebars = Handlebars::new();
+    handlebars.set_strict_mode(true);
+
+    let expression = handlebars
+        .render_template(expression, &params)
+        .map_err(DataError::RenderSql)?;
+
+    Ok(expression)
 }
 
 #[derive(Debug)]

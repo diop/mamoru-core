@@ -32,6 +32,7 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
         let content = metadata
             .content
             .expect("BUG: Missing DaemonMetadataContent.");
+        let parameters = make_daemon_parameters(value.parameters);
 
         match content.r#type() {
             DaemonMetadataContentType::Sql => content
@@ -43,7 +44,12 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
                         severity: query.severity().into(),
                     };
 
-                    match Daemon::new_sql(value.daemon_id.clone(), &query.query, incident_data) {
+                    match Daemon::new_sql(
+                        value.daemon_id.clone(),
+                        &query.query,
+                        incident_data,
+                        parameters.clone(),
+                    ) {
                         Ok(daemon) => Some(daemon),
                         Err(err) => {
                             error!(?err, %value.daemon_id, "Failed to parse SQL daemon.");
@@ -62,7 +68,6 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
                         return vec![];
                     }
                 };
-                let parameters = make_daemon_parameters(value.parameters);
 
                 match Daemon::new_assembly_script(value.daemon_id.clone(), wasm_bytes, parameters) {
                     Ok(daemon) => vec![daemon],
