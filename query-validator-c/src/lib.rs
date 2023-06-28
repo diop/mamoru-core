@@ -52,7 +52,7 @@ impl From<FfiChainType> for ChainType {
 
 lazy_static! {
     static ref RUNTIME: tokio::runtime::Runtime = {
-        tokio::runtime::Builder::new_current_thread()
+        tokio::runtime::Builder::new_multi_thread()
             .build()
             .expect("BUG: Failed to init async runtime.")
     };
