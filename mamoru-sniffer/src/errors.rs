@@ -44,6 +44,9 @@ pub enum ValidationClientError {
 
     #[error("Transaction fetch timeout")]
     TxFetchTimeout,
+
+    #[error("Transaction send max retries exceeded")]
+    TxSendMaxRetries,
 }
 
 impl ValidationClientError {

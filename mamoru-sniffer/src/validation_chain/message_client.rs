@@ -401,10 +401,20 @@ impl MessageClient {
                         }
                     }
 
-                    break;
+                    // Assume our app is the only account user
+                    // Intended to reduce API call rate
+                    account_data.sequence += 1;
+
+                    return Ok(tx_response_objects);
                 }
                 Err(err) => {
                     if err.is_incorrect_account_sequence() {
+                        error!(
+                            account = ?self.config.address(),
+                            "Incorrect account sequence, fetching new account data",
+                        );
+                        tokio::time::sleep(RETRY_SLEEP_TIME).await;
+
                         *account_data = AccountDataCache::fetch(
                             self.query_client.clone(),
                             self.config.address(),
@@ -417,15 +427,9 @@ impl MessageClient {
                     }
                 }
             }
-
-            tokio::time::sleep(RETRY_SLEEP_TIME).await;
         }
 
-        // Assume our app is the only account user
-        // Intended to reduce API call rate
-        account_data.sequence += 1;
-
-        Ok(tx_response_objects)
+        Err(ValidationClientError::TxSendMaxRetries)
     }
 
     async fn fetch_response_objects<R>(&self, tx_hash: String) -> ClientResult<Vec<R>>
