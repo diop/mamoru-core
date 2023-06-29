@@ -51,8 +51,8 @@ use crate::{
     },
 };
 
-const MAX_RETRIES: usize = 5;
-const RETRY_SLEEP_TIME: Duration = Duration::from_millis(100);
+const TX_SEND_MAX_RETRIES: usize = 10;
+const TX_SEND_RETRY_SLEEP_TIME: Duration = Duration::from_millis(1000);
 
 const TX_DATA_MAX_RETRIES: usize = 20;
 const TX_DATA_RETRY_SLEEP_TIME: Duration = Duration::from_millis(200);
@@ -388,7 +388,7 @@ impl MessageClient {
         let mut account_data = self.account_data.lock().await;
         let mut tx_response_objects = Vec::with_capacity(messages_len);
 
-        for _ in 0..MAX_RETRIES {
+        for _ in 0..TX_SEND_MAX_RETRIES {
             match self
                 .sign_and_broadcast_tx_impl(tx_body.clone(), *account_data)
                 .await
@@ -421,7 +421,7 @@ impl MessageClient {
                             account = ?self.config.address(),
                             "Incorrect account sequence, fetching new account data",
                         );
-                        tokio::time::sleep(RETRY_SLEEP_TIME).await;
+                        tokio::time::sleep(TX_SEND_RETRY_SLEEP_TIME).await;
 
                         *account_data = AccountDataCache::fetch(
                             self.query_client.clone(),

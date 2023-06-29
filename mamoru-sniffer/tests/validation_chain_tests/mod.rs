@@ -91,7 +91,9 @@ async fn sniffer(chain_type: ChainType) -> Sniffer {
         query_config: query_client_config(),
         chain_type,
         incident_buffer_size: SnifferConfig::default_incident_buffer_size(),
-        rules_update_interval_secs: SnifferConfig::default_rules_update_interval_secs(),
+        daemons_update_interval_secs: SnifferConfig::default_daemons_update_interval_secs(),
+        incidents_send_interval_millis: SnifferConfig::default_incidents_send_interval_millis(),
+        max_incident_batch_size: SnifferConfig::default_max_incident_batch_size(),
     })
     .await
     .expect("Failed to create Sniffer")

@@ -2,6 +2,7 @@ use std::{ops::Add, sync::Arc, time::Duration};
 
 use futures::TryStreamExt;
 use serde::Deserialize;
+use tokio::sync::mpsc::error::TryRecvError;
 use tokio::{
     sync::{
         mpsc::{error::TrySendError, Receiver, Sender},
@@ -36,8 +37,14 @@ pub struct SnifferConfig {
     #[serde(default = "SnifferConfig::default_incident_buffer_size")]
     pub incident_buffer_size: usize,
 
-    #[serde(default = "SnifferConfig::default_rules_update_interval_secs")]
-    pub rules_update_interval_secs: u64,
+    #[serde(default = "SnifferConfig::default_daemons_update_interval_secs")]
+    pub daemons_update_interval_secs: u64,
+
+    #[serde(default = "SnifferConfig::default_incidents_send_interval_millis")]
+    pub incidents_send_interval_millis: u64,
+
+    #[serde(default = "SnifferConfig::default_max_incident_batch_size")]
+    pub max_incident_batch_size: usize,
 }
 
 impl SnifferConfig {
@@ -51,8 +58,16 @@ impl SnifferConfig {
         256
     }
 
-    pub fn default_rules_update_interval_secs() -> u64 {
+    pub fn default_daemons_update_interval_secs() -> u64 {
         120
+    }
+
+    pub fn default_incidents_send_interval_millis() -> u64 {
+        100
+    }
+
+    pub fn default_max_incident_batch_size() -> usize {
+        20
     }
 }
 
@@ -78,7 +93,9 @@ impl Sniffer {
             Arc::clone(&rules),
             config.chain_type,
             report_rx,
-            Duration::from_secs(config.rules_update_interval_secs),
+            Duration::from_secs(config.daemons_update_interval_secs),
+            Duration::from_millis(config.incidents_send_interval_millis),
+            config.max_incident_batch_size,
         )
         .await?;
 
@@ -160,17 +177,22 @@ struct SnifferBgTask {
     daemons: Arc<RwLock<Vec<Daemon>>>,
     chain_type: ChainType,
     report_rx: Receiver<IncidentReport>,
-    rules_update_interval: Duration,
+    daemons_update_interval: Duration,
+    incident_send_interval: Duration,
+    max_incident_batch_size: usize,
 }
 
 impl SnifferBgTask {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn new(
         message_client: MessageClient,
         query_client: QueryClient,
         daemons: Arc<RwLock<Vec<Daemon>>>,
         chain_type: ChainType,
         report_rx: Receiver<IncidentReport>,
-        rules_update_interval: Duration,
+        daemons_update_interval: Duration,
+        incident_send_interval: Duration,
+        max_incident_batch_size: usize,
     ) -> SnifferResult<Self> {
         message_client.register_sniffer(chain_type).await?;
 
@@ -180,7 +202,9 @@ impl SnifferBgTask {
             daemons,
             chain_type,
             report_rx,
-            rules_update_interval,
+            daemons_update_interval,
+            incident_send_interval,
+            max_incident_batch_size,
         };
 
         task.update_daemons().await?;
@@ -199,31 +223,39 @@ impl SnifferBgTask {
             "Starting sniffer background task"
         );
 
-        let mut rules_interval = tokio::time::interval_at(
-            Instant::now().add(self.rules_update_interval),
-            self.rules_update_interval,
+        let mut daemons_interval = tokio::time::interval_at(
+            Instant::now().add(self.daemons_update_interval),
+            self.daemons_update_interval,
+        );
+
+        let mut incidents_interval = tokio::time::interval_at(
+            Instant::now().add(self.incident_send_interval),
+            self.incident_send_interval,
         );
 
         loop {
             tokio::select! {
                 // it's time to update rules
-                _ = rules_interval.tick() => {
+                _ = daemons_interval.tick() => {
                     if let Err(err) = self.update_daemons().await {
                         error!(error = ?err, "Failed to update rules.")
                     }
                 }
 
-                // received an update from `report_rx`
-                message = self.report_rx.recv() => {
-                    match message {
-                        Some(report) => {
-                            debug!(?report, "Reporting an incident...");
+                _ = incidents_interval.tick() => {
+                    match self.receive_incidents() {
+                        Ok(incidents) => {
+                            if incidents.is_empty() {
+                                continue;
+                            }
 
-                            if let Err(err) = self.message_client.report_incidents(vec![report]).await {
-                                error!(error = ?err, "Failed to report an incident")
+                            debug!(?incidents, len = incidents.len(), "Reporting incidents...");
+
+                            if let Err(err) = self.message_client.report_incidents(incidents).await {
+                                error!(error = ?err, "Failed to report incidents")
                             }
                         }
-                        None => {
+                        Err(TryRecvError::Disconnected) => {
                             warn!("Reports channel is closed. Stopping the job...");
 
                             if let Err(err) = self.message_client.unregister_sniffer().await {
@@ -232,11 +264,33 @@ impl SnifferBgTask {
 
                             return;
                         }
+                        Err(err) => {
+                            error!(error = ?err, "Unknown error while receiving incidents")
+                        }
                     }
-
                 }
             }
         }
+    }
+
+    /// Receives incidents from the channel up to `max_incident_batch_size`.
+    /// Returns `TryRecvError::Disconnected` if the channel is closed.
+    fn receive_incidents(&mut self) -> Result<Vec<IncidentReport>, TryRecvError> {
+        let mut items = Vec::with_capacity(self.max_incident_batch_size);
+
+        loop {
+            match self.report_rx.try_recv() {
+                Ok(item) => items.push(item),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => return Err(TryRecvError::Disconnected),
+            }
+
+            if items.len() >= self.max_incident_batch_size {
+                break;
+            }
+        }
+
+        Ok(items)
     }
 
     /// Updates internal daemon storage with daemons from Validation Chain.
