@@ -12,6 +12,7 @@ use tracing::{debug, error};
 
 use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 
+use crate::validation_chain::proto::cosmos::base::abci::v1beta1::TxResponse;
 use crate::validation_chain::proto::cosmos::tx::v1beta1::GetTxRequest;
 pub use crate::validation_chain::proto::validation_chain::{
     chain::ChainType, source::SourceType, Block as BlockId, DaemonMetadataType, IncidentSeverity,
@@ -392,16 +393,16 @@ impl MessageClient {
                 .sign_and_broadcast_tx_impl(tx_body.clone(), *account_data)
                 .await
             {
-                Ok(tx_hash) => {
+                Ok(tx) => {
                     debug!(
                         account = ?self.config.address(),
                         sequence = account_data.sequence,
-                        tx_hash = ?tx_hash,
+                        tx = ?tx,
                         "Successfully broadcasted transaction",
                     );
 
                     if let SendMode::Block = self.config.send_mode {
-                        tx_response_objects = self.fetch_response_objects(tx_hash).await?;
+                        tx_response_objects = self.fetch_response_objects(tx.txhash).await?;
                     } else {
                         for _ in 0..messages_len {
                             tx_response_objects.push(R::default())
@@ -483,7 +484,7 @@ impl MessageClient {
         &self,
         tx_body: Body,
         account_data: AccountDataCache,
-    ) -> ClientResult<String> {
+    ) -> ClientResult<TxResponse> {
         let AccountDataCache { number, sequence } = account_data;
         let auth_info = SignerInfo::single_direct(Some(self.config.public_key()), sequence)
             .auth_info(Fee::from_amount_and_gas(
@@ -523,7 +524,12 @@ impl MessageClient {
 
         let tx_response = response.tx_response.expect("Always exists.");
 
-        Ok(tx_response.txhash)
+        match tx_response.clone().try_into().ok() {
+            // If code is an error code, return proper error
+            Some(error) => Err(ValidationClientError::CosmosSdkError(error)),
+            // Ok otherwise
+            None => Ok(tx_response),
+        }
     }
 }
 
