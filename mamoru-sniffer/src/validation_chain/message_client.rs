@@ -8,7 +8,7 @@ use cosmrs::{
 };
 use prost::Message;
 use tokio::sync::Mutex;
-use tracing::error;
+use tracing::{debug, error};
 
 use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 
@@ -393,6 +393,13 @@ impl MessageClient {
                 .await
             {
                 Ok(tx_hash) => {
+                    debug!(
+                        account = ?self.config.address(),
+                        sequence = account_data.sequence,
+                        tx_hash = ?tx_hash,
+                        "Successfully broadcasted transaction",
+                    );
+
                     if let SendMode::Block = self.config.send_mode {
                         tx_response_objects = self.fetch_response_objects(tx_hash).await?;
                     } else {
