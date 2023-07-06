@@ -72,3 +72,359 @@ async fn bytes_to_hex() -> Result<(), DataError> {
 
     Ok(())
 }
+
+#[test(tokio::test)]
+async fn u256_from_str() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon("SELECT 1 WHERE bytes_to_hex(u256_from_str('10')) = '0xa';");
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_eq() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            u256_eq(u256_from_str('10'), u256_from_str('10'))
+        AND NOT
+            u256_eq(u256_from_str('11'), u256_from_str('10'));
+
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_gt() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            u256_gt(u256_from_str('11'), u256_from_str('10'))
+        AND NOT
+            u256_gt(u256_from_str('10'), u256_from_str('10'))
+        AND NOT
+            u256_gt(u256_from_str('9'), u256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_ge() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            u256_ge(u256_from_str('11'), u256_from_str('10'))
+        AND
+            u256_ge(u256_from_str('10'), u256_from_str('10'))
+        AND NOT
+            u256_ge(u256_from_str('9'), u256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_lt() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            u256_lt(u256_from_str('9'), u256_from_str('10'))
+        AND NOT
+            u256_lt(u256_from_str('10'), u256_from_str('10'))
+        AND NOT
+            u256_lt(u256_from_str('11'), u256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_le() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            u256_le(u256_from_str('9'), u256_from_str('10'))
+        AND
+            u256_le(u256_from_str('10'), u256_from_str('10'))
+        AND NOT
+            u256_le(u256_from_str('11'), u256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_add() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                u256_add(
+                    u256_from_str('9'),
+                    u256_from_str('1')
+                )
+            ) = '0xa'
+        AND
+            u256_eq(
+                u256_add(
+                    u256_from_str('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'),
+                    u256_from_str('1')
+                ),
+                u256_from_str('0')
+            )
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_sub() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(u256_sub(u256_from_str('0xa'), u256_from_str('1'))) = '0x9'
+        AND
+            u256_eq(
+                u256_sub(
+                    u256_from_str('0'),
+                    u256_from_str('1')
+                ),
+                u256_from_str('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+            );
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_from_str() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon("SELECT 1 WHERE bytes_to_hex(i256_from_str('-10')) = '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6'");
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_eq() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            i256_eq(i256_from_str('10'), i256_from_str('10'))
+        AND NOT
+            i256_eq(i256_from_str('11'), i256_from_str('10'));
+
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_gt() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            i256_gt(i256_from_str('11'), i256_from_str('10'))
+        AND NOT
+            i256_gt(i256_from_str('10'), i256_from_str('10'))
+        AND NOT
+            i256_gt(i256_from_str('9'), i256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_ge() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            i256_ge(i256_from_str('11'), i256_from_str('10'))
+        AND
+            i256_ge(i256_from_str('10'), i256_from_str('10'))
+        AND NOT
+            i256_ge(i256_from_str('9'), i256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_lt() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            i256_lt(i256_from_str('9'), i256_from_str('10'))
+        AND NOT
+            i256_lt(i256_from_str('10'), i256_from_str('10'))
+        AND NOT
+            i256_lt(i256_from_str('11'), i256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_le() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            i256_le(i256_from_str('9'), i256_from_str('10'))
+        AND
+            i256_le(i256_from_str('10'), i256_from_str('10'))
+        AND NOT
+            i256_le(i256_from_str('11'), i256_from_str('10'));
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_add() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(i256_add(i256_from_str('9'), i256_from_str('1'))) = '0xa'
+        AND
+            i256_eq(
+                i256_add(
+                    i256_from_str('-1'),
+                    i256_from_str('1')
+                ),
+                i256_from_str('0')
+            );
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_sub() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                i256_sub(
+                    i256_from_str('0xa'),
+                    i256_from_str('1')
+                )
+            ) = '0x9'
+        AND
+            i256_eq(
+                i256_sub(
+                    i256_from_str('0'),
+                    i256_from_str('1')
+                ),
+                i256_from_str('-1')
+            );
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}

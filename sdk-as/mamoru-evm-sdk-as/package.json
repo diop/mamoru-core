@@ -1,18 +1,20 @@
 {
   "name": "@mamoru-ai/mamoru-evm-sdk-as",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node tests",
     "asbuild:debug": "asc assembly/index.ts --target debug",
     "asbuild:release": "asc assembly/index.ts --target release",
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "test": "asp --verbose",
+    "test:ci": "asp --summary"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@as-pect/cli": "^8.1.0",
     "assemblyscript": "^0.27.4"
   },
   "type": "module",
@@ -23,7 +25,8 @@
     }
   },
   "dependencies": {
-    "@mamoru-ai/mamoru-sdk-as": "^0.4.0",
-    "@wapc/as-msgpack": "^0.1.15"
+    "@mamoru-ai/mamoru-sdk-as": "^0.6.0",
+    "@wapc/as-msgpack": "^0.1.15",
+    "as-base64": "^0.2.0"
   }
 }

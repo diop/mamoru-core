@@ -1,4 +1,4 @@
-import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
+import { msgPackReadUint8Array, readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { _mamoru_get_events } from "./imports";
 import { Decoder } from "@wapc/as-msgpack/assembly";
 
@@ -34,7 +34,7 @@ export class Event {
             let key = decoder.readString();
             let sequence_number = decoder.readUInt64();
             let typ = decoder.readString();
-            let data = Uint8Array.wrap(decoder.readByteArray());
+            let data = msgPackReadUint8Array(decoder);
 
             return new Event(tx_seq, key, sequence_number, typ, data);
         });

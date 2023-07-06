@@ -11,6 +11,8 @@ use crate::DataError;
 pub mod serialize;
 pub mod value;
 
+mod evm_udf;
+pub(crate) mod evm_value;
 mod udf;
 
 /// Represents blockchain-specific data entity that is
@@ -202,6 +204,38 @@ fn setup_session() -> SessionContext {
     session.register_udf(udf::as_string());
     session.register_udf(udf::struct_field());
     session.register_udf(udf::bytes_to_hex());
+    session.register_udf(udf::hex_to_bytes());
+
+    session.register_udf(udf::u256_from_str());
+    session.register_udf(udf::u256_eq());
+    session.register_udf(udf::u256_gt());
+    session.register_udf(udf::u256_ge());
+    session.register_udf(udf::u256_lt());
+    session.register_udf(udf::u256_le());
+    session.register_udf(udf::u256_add());
+    session.register_udf(udf::u256_sub());
+
+    session.register_udf(udf::i256_from_str());
+    session.register_udf(udf::i256_eq());
+    session.register_udf(udf::i256_gt());
+    session.register_udf(udf::i256_ge());
+    session.register_udf(udf::i256_lt());
+    session.register_udf(udf::i256_le());
+    session.register_udf(udf::i256_add());
+    session.register_udf(udf::i256_sub());
+
+    session.register_udf(evm_udf::evm_parse_tx_input());
+    session.register_udf(evm_udf::evm_take_token());
+    session.register_udf(evm_udf::evm_as_boolean());
+    session.register_udf(evm_udf::evm_as_address());
+    session.register_udf(evm_udf::evm_as_uint256());
+    session.register_udf(evm_udf::evm_as_int256());
+    session.register_udf(evm_udf::evm_as_bytes());
+    session.register_udf(evm_udf::evm_as_fixed_bytes());
+    session.register_udf(evm_udf::evm_as_string());
+    session.register_udf(evm_udf::evm_as_array());
+    session.register_udf(evm_udf::evm_as_fixed_array());
+    session.register_udf(evm_udf::evm_as_tuple());
 
     session
 }

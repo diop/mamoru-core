@@ -10,6 +10,9 @@ use mamoru_core::{
 
 pub const TEST_ETH_TOPIC: &str = "442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e";
 
+// mint(address,uint256) (0x55fe002aeff02f77364de339a1292923a15844b8,1200000000)
+const TEST_TX_INPUT: &str = "40c10f1900000000000000000000000055fe002aeff02f77364de339a1292923a15844b80000000000000000000000000000000000000000000000000000000047868c00";
+
 pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainData<TestCtx> {
     let (tx_seq, digest) = (42, tx_hash.into());
     let now = chrono::Utc::now().naive_utc();
@@ -21,6 +24,7 @@ pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainData<TestCtx> {
         seq: tx_seq,
         time: now.timestamp(),
         eth_topic: hex::decode(TEST_ETH_TOPIC).unwrap(),
+        input: hex::decode(TEST_TX_INPUT).unwrap(),
         digest: digest.clone(),
         gas_used: 42_000,
     });
@@ -80,6 +84,9 @@ pub struct TestTransaction {
 
     #[schema(type = "DataType::Binary")]
     pub eth_topic: Vec<u8>,
+
+    #[schema(type = "DataType::Binary")]
+    pub input: Vec<u8>,
 
     #[schema(type = "DataType::Timestamp(TimeUnit::Second, None)")]
     pub time: i64,

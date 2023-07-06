@@ -1,11 +1,6 @@
 import { Decoder } from "@wapc/as-msgpack/assembly";
 import { i128, u128 } from "as-bignum/assembly";
 
-export {
-    i128,
-    u128,
-}
-
 const BOOL_VALUE_TAG: string = "b";
 const U64_VALUE_TAG: string = "u64";
 const STRING_VALUE_TAG: string = "s";

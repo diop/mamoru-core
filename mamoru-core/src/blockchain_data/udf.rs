@@ -1,128 +1,384 @@
 use std::sync::Arc;
 
-use datafusion::{
-    arrow::{
-        array::{ArrayRef, BinaryArray, BooleanArray, StringArray, UInt64Array},
-        datatypes::DataType,
-    },
-    common::cast::{as_binary_array, as_string_array},
-    logical_expr::{create_udf, ScalarUDF, Volatility},
-    physical_plan::functions::make_scalar_function,
+use datafusion::arrow::{
+    array::{BinaryArray, BooleanArray, StringArray, UInt64Array},
+    datatypes::DataType,
 };
+use ethnum::{i256, u256};
 
+use crate::blockchain_data::evm_value::{int256, uint256};
 use crate::blockchain_data::value::Value;
 
-macro_rules! define_as_ty_udf {
-    ($f:ident, $ret:expr, $arr:ty, $code:tt) => {
-        pub(crate) fn $f() -> ScalarUDF {
-            let fun = make_scalar_function(|args: &[ArrayRef]| {
-                let arg1 =
-                    as_binary_array(&args[0]).expect("BUG: Failed to cast DataFusion value in UDF");
+#[macro_export]
+macro_rules! udf {
+    ($f:ident, ($arr:ident $ret:expr), [$($arg_idx:expr => $arg_names:ident : ($arg_arr_types:ident $arg_types:expr)),*,], $code:expr) => {
+        #[allow(unused_parens)]
+        pub(crate) fn $f() -> ::datafusion::logical_expr::ScalarUDF {
+            use ::datafusion::error::DataFusionError;
 
-                let array = arg1
-                    .iter()
-                    .map(|data| match data {
-                        Some(data) => $code(data),
-                        _ => None,
-                    })
-                    .collect::<$arr>();
+            let fun = ::datafusion::physical_plan::functions::make_scalar_function(|args: &[::datafusion::arrow::array::ArrayRef]| {
+                $(
+                    let $arg_names = ::datafusion::common::downcast_value!(args[$arg_idx], $arg_arr_types);
+                )*
 
-                Ok(Arc::new(array) as ArrayRef)
+                let iter = ::itertools::izip!($($arg_names.iter()),*)
+                    .map(|($($arg_names),*)| {
+                        match ($($arg_names),*) {
+                            ($(Some($arg_names)),*) => $code($($arg_names),*),
+                            _ => None,
+                        }
+                    });
+
+                let array: $arr = iter.collect();
+
+                Ok(Arc::new(array) as ::datafusion::arrow::array::ArrayRef)
             });
 
-            create_udf(
+            ::datafusion::logical_expr::create_udf(
                 stringify!($f),
-                vec![DataType::Binary],
+                vec![$( $arg_types ),*],
                 Arc::new($ret),
-                Volatility::Immutable,
+                ::datafusion::logical_expr::Volatility::Immutable,
                 fun,
             )
         }
     };
 }
 
-define_as_ty_udf!(
+udf!(
     as_uint64,
-    DataType::UInt64,
-    UInt64Array,
-    (|data| {
+    (UInt64Array DataType::UInt64),
+    [
+        0 => data: (BinaryArray DataType::Binary),
+    ],
+    |data| {
         let value = Value::from_slice(data).ok()?;
 
         value.as_u64()
-    })
+    }
 );
 
-define_as_ty_udf!(
+udf!(
     as_boolean,
-    DataType::Boolean,
-    BooleanArray,
-    (|data| {
+    (BooleanArray DataType::Boolean),
+    [
+        0 => data: (BinaryArray DataType::Binary),
+    ],
+    |data| {
         let value = Value::from_slice(data).ok()?;
 
         value.as_bool()
-    })
+    }
 );
 
-define_as_ty_udf!(
+udf!(
     as_string,
-    DataType::Utf8,
-    StringArray,
-    (|data| {
+    (StringArray DataType::Utf8),
+    [
+        0 => data: (BinaryArray DataType::Binary),
+    ],
+    |data| {
         let value = Value::from_slice(data).ok()?;
 
-        value.into_string()
-    })
+        value.as_str().map(|s| s.to_string())
+    }
 );
 
-pub(crate) fn struct_field() -> ScalarUDF {
-    let fun = make_scalar_function(|args: &[ArrayRef]| {
-        let arg1 = as_binary_array(&args[0]).expect("BUG: Failed to cast DataFusion value in UDF");
-        let arg2 = as_string_array(&args[1]).expect("BUG: Failed to cast DataFusion value in UDF");
+udf!(
+    struct_field,
+    (BinaryArray DataType::Binary),
+    [
+        0 => data: (BinaryArray DataType::Binary),
+        1 => field: (StringArray DataType::Utf8),
+    ],
+    |data, field| {
+        let value = Value::from_slice(data).ok()?;
+        let field = value.as_struct()?.fields.get(field)?;
 
-        let array = arg1
-            .iter()
-            .zip(arg2)
-            .map(|(data, field)| match (data, field) {
-                (Some(data), Some(field)) => {
-                    let value = Value::from_slice(data).ok()?;
-                    let field = &value.as_struct()?.fields.get(field)?;
+        Some(field.serialize())
+    }
+);
 
-                    Some(field.serialize())
-                }
-                _ => None,
-            })
-            .collect::<BinaryArray>();
+udf!(
+    bytes_to_hex,
+    (StringArray DataType::Utf8),
+    [
+        0 => data: (BinaryArray DataType::Binary),
+    ],
+    |data| {
+        let hex = hex::encode(data);
+        let result = hex.trim_start_matches('0');
 
-        Ok(Arc::new(array) as ArrayRef)
-    });
+        if !result.is_empty() {
+            Some(format!("0x{}", result))
+        } else {
+            Some("0x0".to_string())
+        }
+    }
+);
 
-    create_udf(
-        "struct_field",
-        vec![DataType::Binary, DataType::Utf8],
-        Arc::new(DataType::Binary),
-        Volatility::Immutable,
-        fun,
-    )
-}
+udf!(
+    hex_to_bytes,
+    (BinaryArray DataType::Binary),
+    [
+        0 => data: (StringArray DataType::Utf8),
+    ],
+    |data: &str| {
+        let data = data.trim_start_matches("0x");
+        let data = hex::decode(data).ok()?;
 
-pub(crate) fn bytes_to_hex() -> ScalarUDF {
-    let fun = make_scalar_function(|args: &[ArrayRef]| {
-        let values =
-            as_binary_array(&args[0]).expect("BUG: Failed to cast DataFusion value in UDF");
+        Some(data)
+    }
+);
 
-        let results = values
-            .iter()
-            .map(|value| value.map(|value| format!("0x{}", hex::encode(value))))
-            .collect::<StringArray>();
+udf!(
+    u256_from_str,
+    (BinaryArray DataType::Binary),
+    [
+        0 => data: (StringArray DataType::Utf8),
+    ],
+    |data: &str| {
+        let value = u256::from_str_prefixed(data).ok()?;
 
-        Ok(Arc::new(results) as ArrayRef)
-    });
+        Some(uint256::to_slice(value))
+    }
+);
 
-    create_udf(
-        "bytes_to_hex",
-        vec![DataType::Binary],
-        Arc::new(DataType::Utf8),
-        Volatility::Immutable,
-        fun,
-    )
-}
+udf!(
+    u256_eq,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a: &[u8], b: &[u8]| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        Some(a == b)
+    }
+);
+
+udf!(
+    u256_gt,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        Some(a > b)
+    }
+);
+
+udf!(
+    u256_ge,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        Some(a >= b)
+    }
+);
+
+udf!(
+    u256_lt,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        Some(a < b)
+    }
+);
+
+udf!(
+    u256_le,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        Some(a <= b)
+    }
+);
+
+udf!(
+    u256_add,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        let (result, _) = a.overflowing_add(b);
+
+        Some(uint256::to_slice(result))
+    }
+);
+
+udf!(
+    u256_sub,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        let (result, _) = a.overflowing_sub(b);
+
+        Some(uint256::to_slice(result))
+    }
+);
+
+udf!(
+    i256_from_str,
+    (BinaryArray DataType::Binary),
+    [
+        0 => data: (StringArray DataType::Utf8),
+    ],
+    |data: &str| {
+        let value = match i256::from_str_prefixed(data) {
+            Ok(value) => value,
+            Err(err) => {
+                dbg!(err);
+
+                i256::from_str_prefixed("0").unwrap()
+            }
+        };
+
+
+        Some(int256::to_slice(value))
+    }
+);
+
+udf!(
+    i256_eq,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        Some(a == b)
+    }
+);
+
+udf!(
+    i256_gt,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        Some(a > b)
+    }
+);
+
+udf!(
+    i256_ge,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        Some(a >= b)
+    }
+);
+
+udf!(
+    i256_lt,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        Some(a < b)
+    }
+);
+
+udf!(
+    i256_le,
+    (BooleanArray DataType::Boolean),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        Some(a <= b)
+    }
+);
+
+udf!(
+    i256_add,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        let (result, _) = a.overflowing_add(b);
+
+        Some(int256::to_slice(result))
+    }
+);
+
+udf!(
+    i256_sub,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        let (result, _) = a.overflowing_sub(b);
+
+        Some(int256::to_slice(result))
+    }
+);

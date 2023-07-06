@@ -39,6 +39,11 @@ jobs:
         run: cargo build --verbose
 
   test-mamoru-sdk-as:
+    strategy:
+      matrix:
+        sdk:
+          - mamoru-sdk-as
+          - mamoru-evm-sdk-as
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -48,16 +53,28 @@ jobs:
           node-version: 19.x
 
       - name: Build
+        if: ${{ matrix.sdk == 'mamoru-sdk-as' }}
         # using force due to conflicting requirements in tests package
         run: |
           npm install --force
           npm run asbuild:debug
-        working-directory: ./sdk-as/mamoru-sdk-as
+        working-directory: ./sdk-as/${{ matrix.sdk }}
+
+      - name: Build
+        if: ${{ matrix.sdk != 'mamoru-sdk-as' }}
+        # using force due to conflicting requirements in tests package
+        run: |
+          cd ../mamoru-sdk-as && npm install --force && cd -
+
+          npm link ../mamoru-sdk-as --save
+          npm install --force
+          npm run asbuild:debug
+        working-directory: ./sdk-as/${{ matrix.sdk }}
 
       - name: Test
         run: |
           npm run test:ci
-        working-directory: ./sdk-as/mamoru-sdk-as
+        working-directory: ./sdk-as/${{ matrix.sdk }}
 
   tests:
     runs-on: ubuntu-latest

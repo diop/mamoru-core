@@ -1,5 +1,5 @@
 import { _mamoru_get_events } from "./imports";
-import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
+import { msgPackReadUint8Array, readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Decoder } from "@wapc/as-msgpack/assembly";
 
 export class Event {
@@ -63,12 +63,12 @@ export class Event {
             let block_number = decoder.readUInt64();
             let block_hash = decoder.readString();
             let address = decoder.readString();
-            let topic0 = Uint8Array.wrap(decoder.readByteArray());
-            let topic1 = Uint8Array.wrap(decoder.readByteArray());
-            let topic2 = Uint8Array.wrap(decoder.readByteArray());
-            let topic3 = Uint8Array.wrap(decoder.readByteArray());
-            let topic4 = Uint8Array.wrap(decoder.readByteArray());
-            let data = Uint8Array.wrap(decoder.readByteArray());
+            let topic0 = msgPackReadUint8Array(decoder);
+            let topic1 = msgPackReadUint8Array(decoder);
+            let topic2 = msgPackReadUint8Array(decoder);
+            let topic3 = msgPackReadUint8Array(decoder);
+            let topic4 = msgPackReadUint8Array(decoder);
+            let data = msgPackReadUint8Array(decoder);
 
             return new Event(index, tx_index, tx_hash, block_number, block_hash, address, topic0, topic1, topic2, topic3, topic4, data);
         });

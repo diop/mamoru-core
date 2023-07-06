@@ -79,7 +79,7 @@ impl AssemblyScriptModule {
         run_cmd(path, ["npm", "init", "--yes"]);
         run_cmd(
             path,
-            ["npm", "install", "--save-dev", "assemblyscript@0.26.3"],
+            ["npm", "install", "--save-dev", "assemblyscript@0.27.5"],
         );
         run_cmd(path, ["npx", "asinit", ".", "--yes"]);
 

@@ -86,7 +86,7 @@ impl Value {
         }
     }
 
-    pub(crate) fn into_string(self) -> Option<String> {
+    pub(crate) fn as_str(&self) -> Option<&str> {
         match self {
             Value::String(value) => Some(value),
             _ => None,
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    // cargo test -p mamoru-core test_value_serialize -- --ignored
+    // cargo test -p mamoru-core value::tests::test_value_serialize -- --ignored --nocapture
     fn test_value_serialize() {
         use crate::StructValue;
         use crate::Value;
@@ -148,8 +148,7 @@ mod tests {
         let value = Value::Struct(struct_value);
         let value_data = ValueData::new(value).unwrap();
         let bytes = value_data.as_ref();
-        dbg!(&bytes);
 
-        panic!()
+        dbg!(&bytes);
     }
 }

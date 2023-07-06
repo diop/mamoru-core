@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 env_logger = "0.10"
+hex = "0.4.3"
 mamoru-core = { path = "../../mamoru-core", features = ["testing"] }
 mamoru-core-test-utils = { path = "../../mamoru-core-test-utils" }
 mamoru-evm-types = { path = "../../blockchain-types/mamoru-evm-types" }

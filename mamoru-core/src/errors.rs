@@ -54,3 +54,21 @@ pub enum ValueError {
     #[error("Failed to deserialize the value.")]
     Deserialize(Box<dyn Error>),
 }
+
+#[derive(Error, Debug)]
+pub enum ParseEvmInputError {
+    #[error("Failed to parse signature: {0}")]
+    ParseABI(String),
+
+    #[error("Failed to read signature parameters: {0}")]
+    ReadParameters(ethabi::Error),
+
+    #[error("Failed to decode input data: {0}")]
+    Decode(ethabi::Error),
+
+    #[error("Invalid input data: {0}")]
+    InvalidInputData(String),
+
+    #[error("Failed to deserialize the value.")]
+    Deserialize(Box<dyn Error>),
+}

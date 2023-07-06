@@ -1,10 +1,13 @@
-import { Transaction } from "./tx";
+import { Transaction, TxInput } from "./tx";
 import { Event } from "./event";
 import { CallTrace } from "./call_trace";
 import { Block } from "./block";
+import { Value } from "./value";
 
 export {
     Transaction,
+    TxInput,
+    Value,
     Event,
     CallTrace,
     Block,

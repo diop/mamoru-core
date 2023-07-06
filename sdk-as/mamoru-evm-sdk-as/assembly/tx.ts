@@ -1,6 +1,8 @@
-import { _mamoru_get_transactions } from "./imports";
-import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
+import { _mamoru_get_transactions, _mamoru_parse_tx_input } from "./imports";
+import { msgPackReadUint8Array, readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Decoder } from "@wapc/as-msgpack/assembly";
+import { Value } from "./value";
+import { encode } from "as-base64/assembly"
 
 export class Transaction {
     public readonly txIndex: u32
@@ -16,7 +18,7 @@ export class Transaction {
     public readonly gasPrice: u64
     public readonly gasLimit: u64
     public readonly gasUsed: u64
-    public readonly input: Uint8Array
+    public readonly input: TxInput
     public readonly size: f64
 
     private constructor(
@@ -33,7 +35,7 @@ export class Transaction {
         gas_price: u64,
         gas_limit: u64,
         gas_used: u64,
-        input: Uint8Array,
+        input: TxInput,
         size: f64
     ) {
         this.txIndex = tx_index
@@ -64,15 +66,20 @@ export class Transaction {
 
         return decoder.readArray<Transaction>((decoder: Decoder) => {
             // consume array size (we can't parse data otherwise)
-            let _ = decoder.readArraySize();
+            const _ = decoder.readArraySize();
 
-            let tx_index = decoder.readUInt32();
-            let tx_hash = decoder.readString();
-            let typ = decoder.readUInt8();
-            let nonce = decoder.readUInt64();
-            let status = decoder.readUInt64();
-            let block_index = decoder.readUInt64();
-            let from = decoder.readString();
+            if (decoder.error() != null) {
+                throw new Error("Error after 'const _ = decoder.readArraySize()'")
+            }
+
+            const tx_index = decoder.readUInt32();
+            const tx_hash = decoder.readString();
+            const typ = decoder.readUInt8();
+
+            const nonce = decoder.readUInt64();
+            const status = decoder.readUInt64();
+            const block_index = decoder.readUInt64();
+            const from = decoder.readString();
 
             let to: string | null;
             if (decoder.isNextNil()) {
@@ -81,13 +88,13 @@ export class Transaction {
                 to = decoder.readString();
             }
 
-            let value = decoder.readUInt64();
-            let fee = decoder.readUInt64();
-            let gas_price = decoder.readUInt64();
-            let gas_limit = decoder.readUInt64();
-            let gas_used = decoder.readUInt64();
-            let input = Uint8Array.wrap(decoder.readByteArray());
-            let size = decoder.readFloat64();
+            const value = decoder.readUInt64();
+            const fee = decoder.readUInt64();
+            const gas_price = decoder.readUInt64();
+            const gas_limit = decoder.readUInt64();
+            const gas_used = decoder.readUInt64();
+            const input = new TxInput(msgPackReadUint8Array(decoder));
+            const size = decoder.readFloat64();
 
             return new Transaction(
                 tx_index,
@@ -109,4 +116,29 @@ export class Transaction {
         });
     }
 
+}
+
+export class TxInput {
+    public readonly data: Uint8Array
+
+    constructor(data: Uint8Array) {
+        this.data = data
+    }
+
+    // Parse the input data using the provided ABI.
+    // Returns null if the input data does not match the ABI.
+    // Fails if the ABI is invalid.
+    public parse(abi: string): Value[] | null {
+        const base64Data = encode(this.data);
+        const result = _mamoru_parse_tx_input(abi, base64Data)
+
+        if (result == 0) {
+            return null;
+        }
+
+        const ptr_len = unpackValues(result);
+        const buffer = readMemory(ptr_len[0], ptr_len[1]).buffer;
+
+        return Value.fromBytes(buffer);
+    }
 }

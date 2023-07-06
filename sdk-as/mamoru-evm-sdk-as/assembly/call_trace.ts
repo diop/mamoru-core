@@ -1,5 +1,5 @@
 import { _mamoru_get_call_traces } from "./imports";
-import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
+import { msgPackReadUint8Array, readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Decoder } from "@wapc/as-msgpack/assembly";
 
 export class CallTrace {
@@ -64,7 +64,7 @@ export class CallTrace {
             let value = decoder.readUInt64();
             let gas_limit = decoder.readUInt64();
             let gas_used = decoder.readUInt64();
-            let input = Uint8Array.wrap(decoder.readByteArray());
+            let input = msgPackReadUint8Array(decoder);
 
             return new CallTrace(
                 seq,

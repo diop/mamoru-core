@@ -1,10 +1,13 @@
 use std::error::Error;
 
 use as_ffi_bindings::StringPtr;
+use base64::prelude::{Engine as _, BASE64_STANDARD};
+use ethnum::u256;
 use tokio::runtime::Handle;
 use tracing::error;
 use wasmer::{imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports};
 
+use crate::blockchain_data::evm_value::parse_evm_tx_input;
 use crate::daemon::sql::SqlQuery;
 use crate::BlockchainCtx;
 
@@ -24,8 +27,65 @@ pub(crate) fn all<T: BlockchainCtx>(
             "report" => Function::new_typed_with_env(store, env, report),
             "http" => Function::new_typed_with_env(store, env, http),
             "parameter" => Function::new_typed_with_env(store, env, parameter),
-        }
+            "u256_from_str" => Function::new_typed_with_env(store, env, u256_from_str),
+        },
+        "mamoru_evm" => {
+            "parse_tx_input" => Function::new_typed_with_env(store, env, parse_tx_input),
+        },
     }
+}
+
+/// Parses EVM tx input using the provided ABI.
+/// Returns a pointer to the serialized data.
+/// The pointer is `0` if the signature is not matched.
+fn parse_tx_input<T: BlockchainCtx>(
+    mut ctx: FunctionEnvMut<WasmEnv<T>>,
+    abi_ptr: StringPtr,
+    input_ptr: StringPtr,
+) -> Result<u64, wasmer::RuntimeError> {
+    let env = ctx.data();
+    let abi = env.read_string_ptr(&abi_ptr, &ctx)?;
+    let input_base64 = env.read_string_ptr(&input_ptr, &ctx)?;
+
+    let input = BASE64_STANDARD.decode(&input_base64).map_err(|err| {
+        wasmer::RuntimeError::new(format!(
+            "Invalid base64 input: {:?}. Error: {}",
+            input_base64, err
+        ))
+    })?;
+
+    let parsed_input = parse_evm_tx_input(&abi, &input).map_err(|err| {
+        wasmer::RuntimeError::new(format!("Failed to parse EVM input. Error: {}", err))
+    })?;
+
+    match parsed_input {
+        Some(input) => {
+            let serialized = input.serialize();
+            let ptr = WasmEnv::alloc_slice(&mut ctx, &serialized)?;
+
+            Ok(ptr)
+        }
+        None => Ok(0),
+    }
+}
+
+/// Parses decimal or hexadecimal string into u256.
+/// Returns to WASM as as BE bytes.
+fn u256_from_str<T: BlockchainCtx>(
+    mut ctx: FunctionEnvMut<WasmEnv<T>>,
+    string_ptr: StringPtr,
+) -> Result<u64, wasmer::RuntimeError> {
+    let env = ctx.data();
+    let payload = env.read_string_ptr(&string_ptr, &ctx)?;
+
+    let number = u256::from_str_prefixed(&payload).map_err(|err| {
+        wasmer::RuntimeError::new(format!("Failed to parse u256. Error: {}", err))
+    })?;
+
+    let result = number.to_be_bytes();
+    let ptr = WasmEnv::alloc_slice(&mut ctx, &result)?;
+
+    Ok(ptr)
 }
 
 fn abort<T: BlockchainCtx>(

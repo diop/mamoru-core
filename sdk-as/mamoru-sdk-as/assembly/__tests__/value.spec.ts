@@ -1,9 +1,10 @@
-import { u128, Value } from "../value";
+import { Value } from "../value";
+import { u128 } from "../";
 
-/*
-See `blockchain_data/value.rs:130` to generate this value
-*/
-
+/**
+ * Run `cargo test -p mamoru-core value::tests::test_value_serialize -- --ignored --nocapture`
+ * to generate this value
+ */
 const VALUE_EXAMPLE = [
     129,
     162,

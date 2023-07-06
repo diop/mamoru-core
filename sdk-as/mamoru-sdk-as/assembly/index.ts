@@ -5,11 +5,16 @@ import { _env_assert, _mamoru_http, _mamoru_parameter, _mamoru_query, _mamoru_re
 
 import { HttpMethod, HttpRequest, HttpResponse } from "./http";
 import { Incident, IncidentSeverity, } from "./incident";
-import { i128, u128, Value } from "./value";
+import { Value } from "./value";
+import { i128, i256Safe, u128, u256 } from "as-bignum/assembly";
+
+export * from "./util";
 
 export {
     i128,
     u128,
+    u256,
+    i256Safe,
     JSON,
     HttpMethod,
     HttpRequest,
@@ -119,7 +124,7 @@ class DaemonParameter {
 }
 
 /**
- * todo: add description
+ * Test-only function to assert a condition.
  * @param condition
  * @param message
  */

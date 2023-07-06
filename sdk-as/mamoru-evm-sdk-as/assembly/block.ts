@@ -1,5 +1,5 @@
 import { _mamoru_get_blocks } from "./imports";
-import { readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
+import { msgPackReadUint8Array, readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Decoder } from "@wapc/as-msgpack/assembly";
 
 export class Block {
@@ -67,7 +67,7 @@ export class Block {
             let nonce = decoder.readUInt64();
             let status = decoder.readString();
             let timestamp = decoder.readUInt64();
-            let block_reward = Uint8Array.wrap(decoder.readByteArray());
+            let block_reward = msgPackReadUint8Array(decoder);
             let fee_recipient = decoder.readString();
             let total_difficulty = decoder.readUInt64();
             let size = decoder.readFloat64();

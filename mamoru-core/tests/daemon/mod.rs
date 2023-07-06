@@ -1,6 +1,7 @@
 use mamoru_core::{Daemon, DaemonParameters, DataError, IncidentData, IncidentSeverity};
 
 mod assembly_script;
+mod evm_udf;
 mod sql;
 mod udf;
 

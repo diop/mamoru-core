@@ -5,6 +5,9 @@ use mamoru_core_test_utils::assembly_script::{AssemblyScriptModule, AS_EVM_SDK_P
 use mamoru_core_test_utils::test_daemon;
 use mamoru_evm_types::{Block, CallTrace, Event, EvmCtx, Transaction};
 
+// mint(address,uint256) (0x55fe002aeff02f77364de339a1292923a15844b8,1200000000)
+const TX1_INPUT: &str = "40c10f1900000000000000000000000055fe002aeff02f77364de339a1292923a15844b80000000000000000000000000000000000000000000000000000000047868c00";
+
 fn evm_ctx() -> BlockchainData<EvmCtx> {
     let mut builder: BlockchainDataBuilder<EvmCtx> = BlockchainDataBuilder::new();
 
@@ -39,7 +42,7 @@ fn evm_ctx() -> BlockchainData<EvmCtx> {
             gas_price: 17,
             gas_limit: 18,
             gas_used: 19,
-            input: vec![20, 21, 22],
+            input: hex::decode(TX1_INPUT).unwrap(),
             size: 23.0,
         },
         Transaction {
@@ -131,7 +134,7 @@ async fn smoke() {
 
     let module = AssemblyScriptModule::with_deps(
         r#"""
-        import {assert} from "@mamoru-ai/mamoru-sdk-as/assembly";
+        import {assert, u256} from "@mamoru-ai/mamoru-sdk-as/assembly";
         import {EvmCtx} from "@mamoru-ai/mamoru-evm-sdk-as/assembly";
 
         export function main(): void {
@@ -168,7 +171,16 @@ async fn smoke() {
             assert(tx1.gasPrice == 17, "tx1.gas_price == 17");
             assert(tx1.gasLimit == 18, "tx1.gas_limit == 18");
             assert(tx1.gasUsed == 19, "tx1.gas_used == 19");
-            assert(tx1.input.toString() == "20,21,22", "tx1.input == [20, 21, 22]");
+
+            const tx1Input = tx1.input.parse("mint(address,uint256)");
+
+            if (tx1Input == null) {
+                assert(false, "tx1.input == null");
+                return;
+            }
+
+            assert(tx1Input[0].asAddress() == "0x55fe002aeff02f77364de339a1292923a15844b8", "address == \"0x55fe002aeff02f77364de339a1292923a15844b8\"");
+            assert(tx1Input[1].asUint() == u256.fromU64(1200000000), "num == 1200000000");
             assert(tx1.size == 23.0, "tx1.size == 23.0");
 
             const tx2 = ctx.txs[1];
@@ -186,7 +198,7 @@ async fn smoke() {
             assert(tx2.gasPrice == 31, "tx2.gas_price == 31");
             assert(tx2.gasLimit == 32, "tx2.gas_limit == 32");
             assert(tx2.gasUsed == 33, "tx2.gas_used == 33");
-            assert(tx2.input.toString() == "34,35,36", "tx2.input == [34, 35, 36]");
+            assert(tx2.input.data.toString() == "34,35,36", "tx2.input == [34, 35, 36]");
             assert(tx2.size == 37.0, "tx2.size == 37.0");
 
             const event1 = ctx.events[0];
