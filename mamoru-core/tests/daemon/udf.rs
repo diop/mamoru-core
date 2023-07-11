@@ -252,6 +252,110 @@ async fn u256_sub() -> Result<(), DataError> {
 }
 
 #[test(tokio::test)]
+async fn u256_mul() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                u256_mul(
+                    u256_from_str('10'),
+                    u256_from_str('10')
+                )
+            ) = '0x64'
+        "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_div() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                u256_div(
+                    u256_from_str('10'),
+                    u256_from_str('10')
+                )
+            ) = '0x1'
+        AND
+            bytes_to_hex(
+                u256_div(
+                    u256_from_str('10'),
+                    u256_from_str('3')
+                )
+            ) = '0x3'
+        AND
+            bytes_to_hex(
+                u256_div(
+                    u256_from_str('10'),
+                    u256_from_str('2')
+                )
+            ) = '0x5'
+        "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn u256_pow() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                u256_pow(
+                    u256_from_str('10'),
+                    10
+                )
+            ) = '0x2540be400'
+        AND
+            bytes_to_hex(
+                u256_pow(
+                    u256_from_str('10'),
+                    0
+                )
+            ) = '0x1'
+        AND
+            bytes_to_hex(
+                u256_pow(
+                    u256_from_str('10'),
+                    1
+                )
+            ) = '0xa'
+        AND
+            bytes_to_hex(
+                u256_pow(
+                    u256_from_str('10'),
+                    2
+                )
+            ) = '0x64'
+        "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
 async fn i256_from_str() -> Result<(), DataError> {
     let ctx = data_ctx("DUMMY_HASH");
     let rule = test_sql_daemon("SELECT 1 WHERE bytes_to_hex(i256_from_str('-10')) = '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6'");
@@ -416,6 +520,129 @@ async fn i256_sub() -> Result<(), DataError> {
                 i256_sub(
                     i256_from_str('0'),
                     i256_from_str('1')
+                ),
+                i256_from_str('-1')
+            );
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_mul() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                i256_mul(
+                    i256_from_str('10'),
+                    i256_from_str('10')
+                )
+            ) = '0x64'
+        AND
+            i256_eq(
+                i256_mul(
+                    i256_from_str('-1'),
+                    i256_from_str('1')
+                ),
+                i256_from_str('-1')
+            );
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_div() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                i256_div(
+                    i256_from_str('10'),
+                    i256_from_str('10')
+                )
+            ) = '0x1'
+        AND
+            bytes_to_hex(
+                i256_div(
+                    i256_from_str('10'),
+                    i256_from_str('3')
+                )
+            ) = '0x3'
+        AND
+            bytes_to_hex(
+                i256_div(
+                    i256_from_str('10'),
+                    i256_from_str('2')
+                )
+            ) = '0x5'
+        AND
+            i256_eq(
+                i256_div(
+                    i256_from_str('-1'),
+                    i256_from_str('1')
+                ),
+                i256_from_str('-1')
+            );
+    "#,
+    );
+
+    let data = rule.verify(&ctx).await?;
+
+    assert!(data.matched);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn i256_pow() -> Result<(), DataError> {
+    let ctx = data_ctx("DUMMY_HASH");
+
+    let rule = test_sql_daemon(
+        r#"
+        SELECT 1
+        WHERE
+            bytes_to_hex(
+                i256_pow(
+                    i256_from_str('10'),
+                    10
+                )
+            ) = '0x2540be400'
+        AND
+            bytes_to_hex(
+                i256_pow(
+                    i256_from_str('10'),
+                    0
+                )
+            ) = '0x1'
+        AND
+            bytes_to_hex(
+                i256_pow(
+                    i256_from_str('10'),
+                    1
+                )
+            ) = '0xa'
+        AND
+            i256_eq(
+                i256_pow(
+                    i256_from_str('-1'),
+                    1
                 ),
                 i256_from_str('-1')
             );

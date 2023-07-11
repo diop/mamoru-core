@@ -214,6 +214,9 @@ fn setup_session() -> SessionContext {
     session.register_udf(udf::u256_le());
     session.register_udf(udf::u256_add());
     session.register_udf(udf::u256_sub());
+    session.register_udf(udf::u256_mul());
+    session.register_udf(udf::u256_div());
+    session.register_udf(udf::u256_pow());
 
     session.register_udf(udf::i256_from_str());
     session.register_udf(udf::i256_eq());
@@ -223,6 +226,9 @@ fn setup_session() -> SessionContext {
     session.register_udf(udf::i256_le());
     session.register_udf(udf::i256_add());
     session.register_udf(udf::i256_sub());
+    session.register_udf(udf::i256_mul());
+    session.register_udf(udf::i256_div());
+    session.register_udf(udf::i256_pow());
 
     session.register_udf(evm_udf::evm_parse_tx_input());
     session.register_udf(evm_udf::evm_take_token());

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use datafusion::arrow::{
-    array::{BinaryArray, BooleanArray, StringArray, UInt64Array},
+    array::{BinaryArray, BooleanArray, Int64Array, StringArray, UInt64Array},
     datatypes::DataType,
 };
 use ethnum::{i256, u256};
@@ -254,6 +254,55 @@ udf!(
 );
 
 udf!(
+    u256_mul,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        let (result, _) = a.overflowing_mul(b);
+
+        Some(uint256::to_slice(result))
+    }
+);
+
+udf!(
+    u256_div,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = uint256::from_slice(b)?;
+
+        a.checked_div(b).map(uint256::to_slice)
+    }
+);
+
+udf!(
+    u256_pow,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (Int64Array DataType::Int64),
+    ],
+    |a, b| {
+        let a = uint256::from_slice(a)?;
+        let b = b as u32;
+
+        let (result, _) = a.overflowing_pow(b);
+
+        Some(uint256::to_slice(result))
+    }
+);
+
+udf!(
     i256_from_str,
     (BinaryArray DataType::Binary),
     [
@@ -378,6 +427,55 @@ udf!(
         let b = int256::from_slice(b)?;
 
         let (result, _) = a.overflowing_sub(b);
+
+        Some(int256::to_slice(result))
+    }
+);
+
+udf!(
+    i256_mul,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        let (result, _) = a.overflowing_mul(b);
+
+        Some(int256::to_slice(result))
+    }
+);
+
+udf!(
+    i256_div,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (BinaryArray DataType::Binary),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = int256::from_slice(b)?;
+
+        a.checked_div(b).map(int256::to_slice)
+    }
+);
+
+udf!(
+    i256_pow,
+    (BinaryArray DataType::Binary),
+    [
+        0 => a: (BinaryArray DataType::Binary),
+        1 => b: (Int64Array DataType::Int64),
+    ],
+    |a, b| {
+        let a = int256::from_slice(a)?;
+        let b = b as u32;
+
+        let (result, _) = a.overflowing_pow(b);
 
         Some(int256::to_slice(result))
     }
