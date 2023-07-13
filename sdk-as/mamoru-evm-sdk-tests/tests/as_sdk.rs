@@ -243,7 +243,7 @@ async fn smoke() {
             assert(callTrace1.value == 84, "callTrace1.value == 84");
             assert(callTrace1.gasLimit == 85, "callTrace1.gas_limit == 85");
             assert(callTrace1.gasUsed == 86, "callTrace1.gas_used == 86");
-            assert(callTrace1.input.toString() == "87,88,89", "callTrace1.input == [87, 88, 89]");
+            assert(callTrace1.input.data.toString() == "87,88,89", "callTrace1.input == [87, 88, 89]");
 
             const callTrace2 = ctx.callTraces[1];
 
@@ -257,7 +257,7 @@ async fn smoke() {
             assert(callTrace2.value == 94, "callTrace2.value == 94");
             assert(callTrace2.gasLimit == 95, "callTrace2.gas_limit == 95");
             assert(callTrace2.gasUsed == 96, "callTrace2.gas_used == 96");
-            assert(callTrace2.input.toString() == "97,98,99", "callTrace2.input == [97, 98, 99]");
+            assert(callTrace2.input.data.toString() == "97,98,99", "callTrace2.input == [97, 98, 99]");
         }
     """#,
         &[AS_SDK_PATH, AS_EVM_SDK_PATH],

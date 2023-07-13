@@ -8,6 +8,7 @@ use ethnum::{i256, u256};
 
 use crate::blockchain_data::evm_value::{int256, uint256};
 use crate::blockchain_data::value::Value;
+use crate::{serialize_data, Incident, IncidentSeverity};
 
 #[macro_export]
 macro_rules! udf {
@@ -57,6 +58,68 @@ udf!(
         value.as_u64()
     }
 );
+
+udf!(
+    report,
+    (BinaryArray DataType::Binary),
+    [
+        0 => tx_hash: (StringArray DataType::Utf8),
+        1 => severity: (StringArray DataType::Utf8),
+        2 => message: (StringArray DataType::Utf8),
+    ],
+    |tx_hash: &str, severity: &str, message: &str| {
+        let incident= create_incident(
+            tx_hash.to_string(),
+            severity.to_string(),
+            message.to_string(),
+            None,
+            None,
+        )?;
+
+        Some(serialize_data(&incident))
+    }
+);
+
+udf!(
+    report_full,
+    (BinaryArray DataType::Binary),
+    [
+        0 => tx_hash: (StringArray DataType::Utf8),
+        1 => severity: (StringArray DataType::Utf8),
+        2 => message: (StringArray DataType::Utf8),
+        3 => address: (StringArray DataType::Utf8),
+        4 => data: (BinaryArray DataType::Binary),
+    ],
+    |tx_hash: &str, severity: &str, message: &str, address: &str, data: &[u8]| {
+        let incident= create_incident(
+            tx_hash.to_string(),
+            severity.to_string(),
+            message.to_string(),
+            Some(address.to_string()),
+            Some(data.to_vec()),
+        )?;
+
+        Some(serialize_data(&incident))
+    }
+);
+
+fn create_incident(
+    tx_hash: String,
+    severity: String,
+    message: String,
+    address: Option<String>,
+    data: Option<Vec<u8>>,
+) -> Option<Incident> {
+    let severity = IncidentSeverity::new_from_str(&severity)?;
+
+    Some(Incident {
+        tx_hash,
+        severity,
+        message,
+        address: address.unwrap_or_default(),
+        data: data.unwrap_or_default(),
+    })
+}
 
 udf!(
     as_boolean,

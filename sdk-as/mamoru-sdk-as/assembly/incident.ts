@@ -2,12 +2,14 @@ import { JSONEncoder } from "assemblyscript-json/assembly";
 import { encode } from "as-base64/assembly";
 
 export class Incident {
+    txHash: string
     severity: IncidentSeverity
     message: string
     data: Uint8Array | null
     address: string
 
-    public constructor(severity: IncidentSeverity, message: string, data: Uint8Array | null = null, address: string = "") {
+    public constructor(txHash: string, severity: IncidentSeverity, message: string, data: Uint8Array | null = null, address: string = "") {
+        this.txHash = txHash;
         this.severity = severity;
         this.message = message;
         this.data = data;
@@ -21,6 +23,7 @@ export class Incident {
             encoder.pushObject(null);
             encoder.setString("severity", incidentSeverityToString(this.severity));
             encoder.setString("message", this.message);
+            encoder.setString("tx_hash", this.txHash);
 
             if (this.address != "") {
                 encoder.setString("address", this.address);

@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use crate::assembly_script::incident::IncidentV1;
 use as_ffi_bindings::StringPtr;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use ethnum::u256;
@@ -140,8 +141,11 @@ fn query<T: BlockchainCtx>(
         let query = env.read_string_ptr(&query, &ctx)?;
         let sql_query = SqlQuery::new(&query)?;
 
-        let outputs = Handle::current()
-            .block_on(async move { sql_query.run(env.data_ctx.session().state()).await })?;
+        let outputs = Handle::current().block_on(async move {
+            sql_query
+                .query_serialize(env.data_ctx.session().state())
+                .await
+        })?;
 
         let serialized = serde_json::to_string(&outputs)?;
         let ptr = WasmEnv::<T>::alloc_string_ptr(env.bindings_env.clone(), serialized, &mut ctx)?;
@@ -160,9 +164,9 @@ fn report<T: BlockchainCtx>(
     let incident_json = env.read_string_ptr(&incident_json_ptr, &ctx)?;
 
     runtime_error_ctx(|| {
-        let incident = serde_json::from_str(&incident_json)?;
+        let incident: IncidentV1 = serde_json::from_str(&incident_json)?;
 
-        tx.try_send(incident)?;
+        tx.try_send(incident.into())?;
 
         Ok(())
     })

@@ -1,3 +1,5 @@
+use semver::Version;
+use std::collections::HashMap;
 use std::{
     fmt::{Debug, Formatter},
     sync::{mpsc, Arc},
@@ -15,6 +17,7 @@ use crate::{
 
 mod env;
 mod imports;
+mod incident;
 
 /// Maximum incident reports by a single run.
 const MAX_INCIDENTS: usize = 128;
@@ -42,10 +45,17 @@ pub struct AssemblyScriptExecutor {
     /// The parameters that are passed to Daemon.
     /// Accessible from WASM via host functions.
     parameters: Arc<DaemonParameters>,
+
+    /// The SDKs versions daemon uses.
+    _versions: HashMap<String, Version>,
 }
 
 impl AssemblyScriptExecutor {
-    pub fn new(wasm: impl AsRef<[u8]>, parameters: DaemonParameters) -> Result<Self, DataError> {
+    pub fn new(
+        wasm: impl AsRef<[u8]>,
+        parameters: DaemonParameters,
+        versions: HashMap<String, Version>,
+    ) -> Result<Self, DataError> {
         let store = Store::default();
         let engine = store.engine().clone();
         let module = Module::from_binary(&engine, wasm.as_ref()).map_err(DataError::WasmCompile)?;
@@ -54,6 +64,7 @@ impl AssemblyScriptExecutor {
             module,
             engine,
             parameters: Arc::new(parameters),
+            _versions: versions,
         })
     }
 

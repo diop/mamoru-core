@@ -1,19 +1,12 @@
 use serde::{Deserialize, Serialize};
-use serde_with::base64::Base64;
-use serde_with::serde_as;
 
 /// The incident reported by a Daemon.
-#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Incident {
     pub severity: IncidentSeverity,
     pub message: String,
-
-    #[serde(default)]
+    pub tx_hash: String,
     pub address: String,
-
-    #[serde_as(as = "Base64")]
-    #[serde(default)]
     pub data: Vec<u8>,
 }
 
@@ -24,4 +17,16 @@ pub enum IncidentSeverity {
     Warning,
     Error,
     Alert,
+}
+
+impl IncidentSeverity {
+    pub fn new_from_str(s: &str) -> Option<Self> {
+        match s {
+            "info" => Some(Self::Info),
+            "warning" => Some(Self::Warning),
+            "error" => Some(Self::Error),
+            "alert" => Some(Self::Alert),
+            _ => None,
+        }
+    }
 }

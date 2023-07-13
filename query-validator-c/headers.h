@@ -39,6 +39,8 @@ FfiChainType_t
 
 typedef struct FfiDaemonParameters FfiDaemonParameters_t;
 
+typedef struct FfiDaemonVersions FfiDaemonVersions_t;
+
 
 #include <stdbool.h>
 
@@ -56,14 +58,16 @@ typedef struct FfiValidationResult {
 FfiValidationResult_t ffi_validate_sql (
     FfiChainType_t chain,
     char const * query,
-    FfiDaemonParameters_t * parameters);
+    FfiDaemonParameters_t * parameters,
+    FfiDaemonVersions_t * versions);
 
 /** \brief
  *  Drops `parameters` argument.
  */
 FfiValidationResult_t ffi_validate_sql_renders (
     char const * query,
-    FfiDaemonParameters_t * parameters);
+    FfiDaemonParameters_t * parameters,
+    FfiDaemonVersions_t * versions);
 
 /** \brief
  *  `&'lt [T]` but with a guaranteed `#[repr(C)]` layout.
@@ -94,7 +98,8 @@ typedef struct slice_ref_uint8 {
 
 FfiValidationResult_t ffi_validate_assembly_script (
     FfiChainType_t chain,
-    slice_ref_uint8_t bytes);
+    slice_ref_uint8_t bytes,
+    FfiDaemonVersions_t * versions);
 
 void ffi_drop_validation_result (
     FfiValidationResult_t result);
@@ -105,6 +110,16 @@ void ffi_append_daemon_parameter (
     FfiDaemonParameters_t * parameters,
     char const * key,
     char const * value);
+
+FfiDaemonVersions_t * ffi_new_daemon_versions (void);
+
+FfiValidationResult_t ffi_append_daemon_version (
+    FfiDaemonVersions_t * versions,
+    char const * key,
+    char const * value);
+
+void ffi_drop_daemon_versions (
+    FfiDaemonVersions_t * versions);
 
 
 #ifdef __cplusplus

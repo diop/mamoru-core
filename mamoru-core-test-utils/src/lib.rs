@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use mamoru_core::{Daemon, DaemonParameters, DataError};
 
 use crate::assembly_script::AssemblyScriptModule;
@@ -20,5 +22,10 @@ pub fn try_test_daemon(
     module: &AssemblyScriptModule,
     parameters: DaemonParameters,
 ) -> Result<Daemon, DataError> {
-    Daemon::new_assembly_script("dummy".to_string(), module.bytes(), parameters)
+    Daemon::new_assembly_script(
+        "dummy".to_string(),
+        module.bytes(),
+        parameters,
+        HashMap::new(),
+    )
 }

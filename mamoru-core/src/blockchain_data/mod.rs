@@ -199,6 +199,9 @@ impl<T> BlockchainData<T> {
 fn setup_session() -> SessionContext {
     let session = SessionContext::new();
 
+    session.register_udf(udf::report());
+    session.register_udf(udf::report_full());
+
     session.register_udf(udf::as_boolean());
     session.register_udf(udf::as_uint64());
     session.register_udf(udf::as_string());

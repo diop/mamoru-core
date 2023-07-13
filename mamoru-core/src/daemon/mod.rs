@@ -1,5 +1,7 @@
 use std::{collections::HashMap, fmt::Debug};
 
+pub use semver::Version;
+
 use crate::blockchain_data::BlockchainData;
 use crate::{
     daemon::{assembly_script::AssemblyScriptExecutor, incident::Incident, sql::SqlExecutor},
@@ -22,6 +24,9 @@ pub struct VerifyCtx {
 /// The parameters that are passed to Daemon.
 pub type DaemonParameters = HashMap<String, String>;
 
+/// The versions of the dependencies that are passed to Daemon.
+pub type DaemonVersions = HashMap<String, Version>;
+
 #[derive(Debug)]
 pub enum Executor {
     Sql(SqlExecutor),
@@ -36,13 +41,26 @@ pub struct Daemon {
 }
 
 impl Daemon {
+    pub const MAMORU_VERSION_KEY: &'static str = "mamoru";
+
     pub fn new_sql(
         id: String,
         expression: &str,
         incident_data: IncidentData,
         parameters: DaemonParameters,
+        versions: HashMap<String, Version>,
     ) -> Result<Self, DataError> {
-        let executor = Executor::Sql(SqlExecutor::new(expression, incident_data, parameters)?);
+        let version = versions
+            .get(Self::MAMORU_VERSION_KEY)
+            .cloned()
+            .unwrap_or_else(|| "0.0.0".parse().expect("0.0.0 is a valid version."));
+
+        let executor = Executor::Sql(SqlExecutor::new(
+            expression,
+            incident_data,
+            parameters,
+            version,
+        )?);
 
         Ok(Self::new(id, executor))
     }
@@ -51,8 +69,10 @@ impl Daemon {
         id: String,
         wasm: impl AsRef<[u8]>,
         parameters: DaemonParameters,
+        versions: HashMap<String, Version>,
     ) -> Result<Self, DataError> {
-        let executor = Executor::AssemblyScript(AssemblyScriptExecutor::new(wasm, parameters)?);
+        let executor =
+            Executor::AssemblyScript(AssemblyScriptExecutor::new(wasm, parameters, versions)?);
 
         Ok(Self::new(id, executor))
     }
@@ -66,7 +86,7 @@ impl Daemon {
     }
 
     /// Executes the given daemon.
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(daemon_id = %self.id()))]
     pub async fn verify<T: BlockchainCtx>(
         &self,
         ctx: &BlockchainData<T>,

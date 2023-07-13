@@ -1,11 +1,13 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer};
 use strum::VariantNames;
 use tracing::{error, warn};
 
-use mamoru_core::{Daemon, IncidentData};
+use mamoru_core::{Daemon, IncidentData, Version};
 
+use crate::validation_chain::proto::validation_chain::MetadataSdkVersion;
 use crate::validation_chain::{
     proto::validation_chain::DaemonMetadataContentType, ChainType, DaemonParameter,
     DaemonQueryResponseDto, IncidentSeverity,
@@ -33,6 +35,7 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
             .content
             .expect("BUG: Missing DaemonMetadataContent.");
         let parameters = make_daemon_parameters(value.parameters);
+        let sdk_versions = make_sdk_versions(metadata.sdk_versions);
 
         match content.r#type() {
             DaemonMetadataContentType::Sql => content
@@ -49,6 +52,7 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
                         &query.query,
                         incident_data,
                         parameters.clone(),
+                        sdk_versions.clone(),
                     ) {
                         Ok(daemon) => Some(daemon),
                         Err(err) => {
@@ -69,7 +73,12 @@ impl From<DaemonQueryResponseDto> for Vec<Daemon> {
                     }
                 };
 
-                match Daemon::new_assembly_script(value.daemon_id.clone(), wasm_bytes, parameters) {
+                match Daemon::new_assembly_script(
+                    value.daemon_id.clone(),
+                    wasm_bytes,
+                    parameters,
+                    sdk_versions,
+                ) {
                     Ok(daemon) => vec![daemon],
                     Err(err) => {
                         error!(?err, %value.daemon_id, "Failed to parse WASM daemon.");
@@ -91,6 +100,31 @@ impl From<IncidentSeverity> for mamoru_core::IncidentSeverity {
             IncidentSeverity::SeverityAlert => Self::Alert,
         }
     }
+}
+
+fn make_sdk_versions(values: Vec<MetadataSdkVersion>) -> HashMap<String, Version> {
+    let mut results = HashMap::new();
+
+    for version in values {
+        if results.get(&version.sdk).is_some() {
+            warn!(sdk = %version.sdk, "Duplicate SDK version name");
+
+            continue;
+        }
+
+        match Version::parse(&version.version) {
+            Ok(semver) => {
+                results.insert(version.sdk, semver);
+            }
+            Err(err) => {
+                warn!(sdk = %version.sdk, ?err, "Failed to parse SDK version");
+
+                continue;
+            }
+        }
+    }
+
+    results
 }
 
 fn make_daemon_parameters(values: Vec<DaemonParameter>) -> mamoru_core::DaemonParameters {

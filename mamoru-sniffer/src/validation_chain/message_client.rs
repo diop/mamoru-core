@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{sync::Arc, time::Duration};
 
 use cosmrs::proto::cosmos::base::abci::v1beta1::TxMsgData;
@@ -20,6 +21,7 @@ pub use crate::validation_chain::proto::validation_chain::{
     MsgReportIncidentResponse, MsgSubscribeDaemonsResponse, MsgUnregisterSnifferResponse,
     Transaction as TransactionId,
 };
+use crate::validation_chain::proto::validation_chain::{MetadataSdkVersion, Transaction};
 use crate::validation_chain::SendMode;
 use crate::{
     errors::ValidationClientError,
@@ -78,6 +80,7 @@ pub struct RegisterDaemonMetadataRequest {
     pub tags: Vec<String>,
     pub supported_chains: Vec<ChainType>,
     pub parameters: Vec<DaemonMetadataParemeter>,
+    pub versions: HashMap<String, String>,
 }
 
 #[derive(Default)]
@@ -230,7 +233,7 @@ impl MessageClient {
 
         let report_messages: Vec<_> = reports
             .into_iter()
-            .map(|report| {
+            .map(|report: IncidentReport| {
                 let (severity, message, address, data) = {
                     let severity = match report.incident.severity {
                         MamoruIncidentSeverity::Info => IncidentSeverity::SeverityInfo,
@@ -247,6 +250,15 @@ impl MessageClient {
                     )
                 };
 
+                let tx = report.tx.map(|tx| Transaction {
+                    tx_id: tx.tx_id,
+                    hash: if !report.incident.tx_hash.is_empty() {
+                        report.incident.tx_hash
+                    } else {
+                        tx.hash
+                    },
+                });
+
                 MsgReportIncident {
                     creator: sniffer.clone(),
                     incident: Some(IncidentReportCommandRequestDto {
@@ -256,7 +268,7 @@ impl MessageClient {
                             source_type: report.source.into(),
                         }),
                         block: report.block,
-                        tx: report.tx,
+                        tx,
                         chain: Some(Chain {
                             chain_type: report.chain.into(),
                         }),
@@ -322,6 +334,11 @@ impl MessageClient {
                 vec![MsgCreateDaemonMetadata {
                     creator: sniffer,
                     daemon_metadata: Some(CreateDaemonMetadataCommandRequestDto {
+                        sdk_versions: request
+                            .versions
+                            .into_iter()
+                            .map(|(sdk, version)| MetadataSdkVersion { version, sdk })
+                            .collect(),
                         logo_url: request.logo_url,
                         metadata_type: request.kind as i32,
                         title: request.title,

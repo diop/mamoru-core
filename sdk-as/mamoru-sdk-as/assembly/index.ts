@@ -75,15 +75,16 @@ export function query(query: string): JSON.Obj[] {
  *
  * @example
  *
- * report(IncidentSeverity.Alert, "Test");
+ * report(tx.txHash, IncidentSeverity.Alert, "Test");
  */
 export function report(
+    txHash: string,
     severity: IncidentSeverity,
     message: string,
     data: Uint8Array | null = null,
     address: string = "",
 ): void {
-    _mamoru_report((new Incident(severity, message, data, address)).toJSON())
+    _mamoru_report((new Incident(txHash, severity, message, data, address)).toJSON())
 }
 
 /**

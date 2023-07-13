@@ -1,6 +1,7 @@
 import { _mamoru_get_call_traces } from "./imports";
 import { msgPackReadUint8Array, readMemory, unpackValues } from "@mamoru-ai/mamoru-sdk-as/assembly/util";
 import { Decoder } from "@wapc/as-msgpack/assembly";
+import { TxInput } from "./tx_input";
 
 export class CallTrace {
     public readonly seq: u32
@@ -13,7 +14,7 @@ export class CallTrace {
     public readonly value: u64
     public readonly gasLimit: u64
     public readonly gasUsed: u64
-    public readonly input: Uint8Array
+    public readonly input: TxInput
 
     private constructor(
         seq: u32,
@@ -26,7 +27,7 @@ export class CallTrace {
         value: u64,
         gas_limit: u64,
         gas_used: u64,
-        input: Uint8Array
+        input: TxInput
     ) {
         this.seq = seq
         this.txIndex = tx_index
@@ -54,17 +55,17 @@ export class CallTrace {
             // consume array size (we can't parse data otherwise)
             let _ = decoder.readArraySize();
 
-            let seq = decoder.readUInt32();
-            let tx_index = decoder.readUInt32();
-            let block_index = decoder.readUInt64();
-            let depth = decoder.readUInt32();
-            let typ = decoder.readString();
-            let from = decoder.readString();
-            let to = decoder.readString();
-            let value = decoder.readUInt64();
-            let gas_limit = decoder.readUInt64();
-            let gas_used = decoder.readUInt64();
-            let input = msgPackReadUint8Array(decoder);
+            const seq = decoder.readUInt32();
+            const tx_index = decoder.readUInt32();
+            const block_index = decoder.readUInt64();
+            const depth = decoder.readUInt32();
+            const typ = decoder.readString();
+            const from = decoder.readString();
+            const to = decoder.readString();
+            const value = decoder.readUInt64();
+            const gas_limit = decoder.readUInt64();
+            const gas_used = decoder.readUInt64();
+            const input = new TxInput(msgPackReadUint8Array(decoder));
 
             return new CallTrace(
                 seq,

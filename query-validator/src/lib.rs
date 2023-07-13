@@ -1,10 +1,10 @@
 pub use error::*;
 use mamoru_aptos_types::AptosCtx;
-pub use mamoru_core::DaemonParameters;
 use mamoru_core::{
     BlockchainCtx, BlockchainData, BlockchainDataBuilder, Daemon, DataError, IncidentData,
     IncidentSeverity,
 };
+pub use mamoru_core::{DaemonParameters, DaemonVersions};
 use mamoru_evm_types::EvmCtx;
 use mamoru_sui_types::SuiCtx;
 
@@ -22,8 +22,9 @@ pub enum ChainType {
 pub fn validate_sql_renders(
     query: &str,
     parameters: DaemonParameters,
+    versions: DaemonVersions,
 ) -> Result<(), ValidateError> {
-    match sql_validation_daemon(query, parameters) {
+    match sql_validation_daemon(query, parameters, versions) {
         Err(DataError::RenderSql(err)) => Err(ValidateError::RenderSql(err)),
         _ => Ok(()),
     }
@@ -34,23 +35,24 @@ pub async fn validate_sql(
     chain: ChainType,
     query: &str,
     parameters: DaemonParameters,
+    versions: DaemonVersions,
 ) -> Result<(), ValidateError> {
     let result = match chain {
         ChainType::Sui => {
             let ctx = empty_ctx::<SuiCtx>();
-            let daemon = sql_validation_daemon(query, parameters)?;
+            let daemon = sql_validation_daemon(query, parameters, versions)?;
 
             daemon.verify(&ctx).await?
         }
         ChainType::Evm => {
             let ctx = empty_ctx::<EvmCtx>();
-            let daemon = sql_validation_daemon(query, parameters)?;
+            let daemon = sql_validation_daemon(query, parameters, versions)?;
 
             daemon.verify(&ctx).await?
         }
         ChainType::Aptos => {
             let ctx = empty_ctx::<AptosCtx>();
-            let daemon = sql_validation_daemon(query, parameters)?;
+            let daemon = sql_validation_daemon(query, parameters, versions)?;
 
             daemon.verify(&ctx).await?
         }
@@ -64,23 +66,27 @@ pub async fn validate_sql(
 }
 
 /// Validates a AssemblyScript Daemon against an empty database.
-pub async fn validate_assembly_script(chain: ChainType, bytes: &[u8]) -> Result<(), ValidateError> {
+pub async fn validate_assembly_script(
+    chain: ChainType,
+    bytes: &[u8],
+    versions: DaemonVersions,
+) -> Result<(), ValidateError> {
     let result = match chain {
         ChainType::Sui => {
             let ctx = empty_ctx::<SuiCtx>();
-            let daemon = assembly_script_validation_daemon(bytes)?;
+            let daemon = assembly_script_validation_daemon(bytes, versions)?;
 
             daemon.verify(&ctx).await?
         }
         ChainType::Evm => {
             let ctx = empty_ctx::<EvmCtx>();
-            let daemon = assembly_script_validation_daemon(bytes)?;
+            let daemon = assembly_script_validation_daemon(bytes, versions)?;
 
             daemon.verify(&ctx).await?
         }
         ChainType::Aptos => {
             let ctx = empty_ctx::<AptosCtx>();
-            let daemon = assembly_script_validation_daemon(bytes)?;
+            let daemon = assembly_script_validation_daemon(bytes, versions)?;
 
             daemon.verify(&ctx).await?
         }
@@ -92,7 +98,11 @@ pub async fn validate_assembly_script(chain: ChainType, bytes: &[u8]) -> Result<
     Ok(())
 }
 
-fn sql_validation_daemon(query: &str, parameters: DaemonParameters) -> Result<Daemon, DataError> {
+fn sql_validation_daemon(
+    query: &str,
+    parameters: DaemonParameters,
+    versions: DaemonVersions,
+) -> Result<Daemon, DataError> {
     Daemon::new_sql(
         "QUERY_VALIDATE".to_string(),
         query,
@@ -101,14 +111,19 @@ fn sql_validation_daemon(query: &str, parameters: DaemonParameters) -> Result<Da
             severity: IncidentSeverity::Info,
         },
         parameters,
+        versions,
     )
 }
 
-fn assembly_script_validation_daemon(bytes: &[u8]) -> Result<Daemon, DataError> {
+fn assembly_script_validation_daemon(
+    bytes: &[u8],
+    versions: DaemonVersions,
+) -> Result<Daemon, DataError> {
     Daemon::new_assembly_script(
         "WASM_VALIDATE".to_string(),
         bytes,
         DaemonParameters::default(),
+        versions,
     )
 }
 
@@ -150,6 +165,7 @@ mod tests {
             ChainType::Sui,
             "SELECT * FROM transactions",
             DaemonParameters::default(),
+            DaemonVersions::default(),
         )
         .await;
 
@@ -158,7 +174,13 @@ mod tests {
 
     #[tokio::test]
     async fn always_true_expression_fails() {
-        let result = validate_sql(ChainType::Sui, "SELECT 1", DaemonParameters::default()).await;
+        let result = validate_sql(
+            ChainType::Sui,
+            "SELECT 1",
+            DaemonParameters::default(),
+            DaemonVersions::default(),
+        )
+        .await;
 
         assert!(matches!(result, Err(ValidateError::MatchesEmptyDatabase)))
     }
@@ -169,6 +191,7 @@ mod tests {
             ChainType::Sui,
             "SELECT * FROM THIS_TABLE_DOES_NOT_EXIST",
             DaemonParameters::default(),
+            DaemonVersions::default(),
         )
         .await;
 
@@ -180,8 +203,11 @@ mod tests {
 
     #[test]
     fn validate_sql_renders_ok() {
-        let result =
-            validate_sql_renders("SELECT * FROM transactions", DaemonParameters::default());
+        let result = validate_sql_renders(
+            "SELECT * FROM transactions",
+            DaemonParameters::default(),
+            DaemonVersions::default(),
+        );
 
         assert!(result.is_ok())
     }
@@ -191,6 +217,7 @@ mod tests {
         let result = validate_sql_renders(
             "SELECT * FROM transactions WHERE block_number = {{block_number}}",
             DaemonParameters::default(),
+            DaemonVersions::default(),
         );
 
         assert!(matches!(result, Err(ValidateError::RenderSql(_))))
@@ -198,14 +225,21 @@ mod tests {
 
     #[tokio::test]
     async fn minimum_valid_assembly_script_ok() {
-        let result = validate_assembly_script(ChainType::Sui, ASC_EMPTY_MAIN).await;
+        let result =
+            validate_assembly_script(ChainType::Sui, ASC_EMPTY_MAIN, DaemonVersions::default())
+                .await;
 
         assert!(result.is_ok());
     }
 
     #[tokio::test]
     async fn minimum_valid_assembly_script_without_runtime_fails() {
-        let result = validate_assembly_script(ChainType::Sui, ASC_EMPTY_MAIN_NO_RUNTIME).await;
+        let result = validate_assembly_script(
+            ChainType::Sui,
+            ASC_EMPTY_MAIN_NO_RUNTIME,
+            DaemonVersions::default(),
+        )
+        .await;
 
         assert!(matches!(
             result,

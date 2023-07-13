@@ -2562,11 +2562,13 @@ dependencies = [
  "handlebars",
  "hex",
  "itertools 0.11.0",
+ "lazy_static",
  "mamoru-core-test-utils",
  "maplit",
  "mockito",
  "reqwest",
  "rmp-serde",
+ "semver",
  "serde",
  "serde_json",
  "serde_with",
@@ -2575,6 +2577,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "typed-builder",
  "wasmer",
 ]
 
@@ -3995,9 +3998,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58bc9567378fc7690d6b2addae4e60ac2eeea07becb2c64b9f218b53865cba2a"
+checksum = "bebd363326d05ec3e2f532ab7660680f3b02130d780c299bca73469d521bc0ed"
 
 [[package]]
 name = "seq-macro"
@@ -4815,6 +4818,26 @@ checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
  "static_assertions",
+]
+
+[[package]]
+name = "typed-builder"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98d9e1c147896ed2835fccc41d0600d0b6ca68261e6ccd3691e51659ae9153b8"
+dependencies = [
+ "typed-builder-macro",
+]
+
+[[package]]
+name = "typed-builder-macro"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6dba2e999a7ccbeb42ede7c9824fc9d4660794e5bcd456e5d60ac17baad6e083"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.15",
 ]
 
 [[package]]

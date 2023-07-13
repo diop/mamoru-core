@@ -10,4 +10,7 @@ pub enum ValidateError {
 
     #[error("The provided expression matches an empty database. It means the expression would probably match any rule.")]
     MatchesEmptyDatabase,
+
+    #[error("Version {0} is not semver.")]
+    InvalidVersion(String),
 }

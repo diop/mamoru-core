@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use query_validator::{
     validate_assembly_script, validate_sql, validate_sql_renders, ChainType, DaemonParameters,
-    ValidateError,
+    DaemonVersions, ValidateError,
 };
 use safer_ffi::prelude::*;
 
@@ -22,14 +22,25 @@ pub struct FfiValidationResult {
 
 impl From<Result<(), ValidateError>> for FfiValidationResult {
     fn from(value: Result<(), ValidateError>) -> Self {
-        let (is_error, message) = match value {
-            Ok(_) => (false, "".to_string()),
-            Err(err) => (true, format!("{:#?}", err)),
-        };
+        match value {
+            Ok(_) => Self::ok(),
+            Err(err) => Self::from_validate_error(err),
+        }
+    }
+}
 
+impl FfiValidationResult {
+    fn from_validate_error(value: ValidateError) -> Self {
         FfiValidationResult {
-            is_error,
-            message: message.try_into().unwrap(),
+            is_error: true,
+            message: format!("{:#?}", value).try_into().unwrap(),
+        }
+    }
+
+    fn ok() -> Self {
+        FfiValidationResult {
+            is_error: false,
+            message: "".to_string().try_into().unwrap(),
         }
     }
 }
@@ -38,6 +49,12 @@ impl From<Result<(), ValidateError>> for FfiValidationResult {
 #[ReprC::opaque]
 pub struct FfiDaemonParameters {
     inner: DaemonParameters,
+}
+
+#[derive_ReprC]
+#[ReprC::opaque]
+pub struct FfiDaemonVersions {
+    inner: DaemonVersions,
 }
 
 impl From<FfiChainType> for ChainType {
@@ -64,14 +81,16 @@ fn ffi_validate_sql<'a>(
     chain: FfiChainType,
     query: char_p::Ref<'a>,
     parameters: repr_c::Box<FfiDaemonParameters>,
+    versions: repr_c::Box<FfiDaemonVersions>,
 ) -> FfiValidationResult {
     let chain = chain.into();
     let query = query.to_str();
     let parameters = parameters.into().inner;
+    let versions = versions.into().inner;
 
     let result = RUNTIME
         .handle()
-        .block_on(async move { validate_sql(chain, query, parameters).await });
+        .block_on(async move { validate_sql(chain, query, parameters, versions).await });
 
     result.into()
 }
@@ -81,11 +100,13 @@ fn ffi_validate_sql<'a>(
 fn ffi_validate_sql_renders<'a>(
     query: char_p::Ref<'a>,
     parameters: repr_c::Box<FfiDaemonParameters>,
+    versions: repr_c::Box<FfiDaemonVersions>,
 ) -> FfiValidationResult {
     let query = query.to_str();
     let parameters = parameters.into().inner;
+    let versions = versions.into().inner;
 
-    let result = validate_sql_renders(query, parameters);
+    let result = validate_sql_renders(query, parameters, versions);
 
     result.into()
 }
@@ -94,13 +115,15 @@ fn ffi_validate_sql_renders<'a>(
 fn ffi_validate_assembly_script<'a>(
     chain: FfiChainType,
     bytes: c_slice::Ref<'a, u8>,
+    versions: repr_c::Box<FfiDaemonVersions>,
 ) -> FfiValidationResult {
     let chain = chain.into();
     let bytes = bytes.as_slice();
+    let versions = versions.into().inner;
 
     let result = RUNTIME
         .handle()
-        .block_on(async move { validate_assembly_script(chain, bytes).await });
+        .block_on(async move { validate_assembly_script(chain, bytes, versions).await });
 
     let (is_error, message) = match result {
         Ok(_) => (false, "".to_string()),
@@ -135,6 +158,41 @@ fn ffi_append_daemon_parameter<'a>(
     let value = value.to_str();
 
     parameters.inner.insert(key.to_string(), value.to_string());
+}
+
+#[ffi_export]
+fn ffi_new_daemon_versions() -> repr_c::Box<FfiDaemonVersions> {
+    repr_c::Box::new(FfiDaemonVersions {
+        inner: DaemonVersions::default(),
+    })
+}
+
+#[ffi_export]
+fn ffi_append_daemon_version<'a>(
+    versions: &mut FfiDaemonVersions,
+    key: char_p::Ref<'a>,
+    value: char_p::Ref<'a>,
+) -> FfiValidationResult {
+    let key = key.to_str();
+    let value = value.to_str();
+
+    let value_semver = value
+        .parse()
+        .map_err(|_| ValidateError::InvalidVersion(value.to_string()));
+
+    match value_semver {
+        Err(err) => FfiValidationResult::from_validate_error(err),
+        Ok(value_semver) => {
+            versions.inner.insert(key.to_string(), value_semver);
+
+            FfiValidationResult::ok()
+        }
+    }
+}
+
+#[ffi_export]
+fn ffi_drop_daemon_versions(versions: repr_c::Box<FfiDaemonVersions>) {
+    drop(versions)
 }
 
 #[safer_ffi::cfg_headers]

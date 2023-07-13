@@ -94,7 +94,7 @@ async fn generates_many_incidents() {
 
         export function main(): void {
             for (let i = 0; i < 10; i++) {
-              report(IncidentSeverity.Alert, "Test");
+              report('txHash', IncidentSeverity.Alert, "Test");
             }
         }
     """#,
@@ -109,6 +109,17 @@ async fn generates_many_incidents() {
 
     assert!(result.matched);
     assert_eq!(result.incidents.len(), 10);
+
+    expect![[r#"
+        Incident {
+            severity: Alert,
+            message: "Test",
+            tx_hash: "txHash",
+            address: "",
+            data: [],
+        }
+    "#]]
+    .assert_debug_eq(&result.incidents[0]);
 }
 
 #[test(tokio::test)]
@@ -122,7 +133,7 @@ async fn too_many_incident_generation_fails() {
         export function main(): void {
             // assuming 1000 is too many
             for (let i = 0; i < 1_000; i++) {
-              report(IncidentSeverity.Alert, "Test");
+              report('txHash', IncidentSeverity.Alert, "Test");
             }
         }
     """#,
@@ -179,7 +190,7 @@ async fn smoke() {
                let gas_used = value.getInteger("gas_used")!.valueOf();
 
                if (gas_used == 42_000) {
-                   report(IncidentSeverity.Alert, "Test");
+                   report('txHash', IncidentSeverity.Alert, "Test");
                }
            });
         }
@@ -212,7 +223,7 @@ async fn http() {
            let _error = response.error();
 
            if (response.status() == 418) {
-               report(IncidentSeverity.Alert, "Test");
+               report('txHash', IncidentSeverity.Alert, "Test");
            }
         }
     """#;
@@ -267,7 +278,7 @@ async fn parameter() {
            let stringValid = stringParam.asString() == "hello";
 
            if (boolValid && numberValid && stringValid) {
-               report(IncidentSeverity.Alert, "Test");
+               report('txHash', IncidentSeverity.Alert, "Test");
            }
         }
     """#,
@@ -303,7 +314,7 @@ async fn incident_report_data_deserialization() {
             let data = new Uint8Array(4);
             data.set([0, 1, 2, 3])
 
-            report(IncidentSeverity.Alert, "Test", data, "0x0");
+            report('txHash', IncidentSeverity.Alert, "Test", data, "0x0");
         }
     """#,
         &[AS_SDK_PATH],
@@ -339,25 +350,25 @@ async fn u256_from_str() {
             const senceOfLife = u256FromStr("42");
 
             if (senceOfLife.toString() == "42") {
-                report(IncidentSeverity.Alert, "senceOfLife");
+                report('txHash', IncidentSeverity.Alert, "senceOfLife");
             }
 
             const maxU256Decimal = u256FromStr("115792089237316195423570985008687907853269984665640564039457584007913129639935");
 
             if (maxU256Decimal.toString() == "115792089237316195423570985008687907853269984665640564039457584007913129639935") {
-                report(IncidentSeverity.Alert, "maxU256Decimal");
+                report('txHash', IncidentSeverity.Alert, "maxU256Decimal");
             }
 
             const maxU256 = u256FromStr("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
             if (maxU256.toString() == "115792089237316195423570985008687907853269984665640564039457584007913129639935") {
-                report(IncidentSeverity.Alert, "maxU256");
+                report('txHash', IncidentSeverity.Alert, "maxU256");
             }
 
             const zero = u256FromStr("0");
 
             if (zero.toString() == "0") {
-                report(IncidentSeverity.Alert, "zero");
+                report('txHash', IncidentSeverity.Alert, "zero");
             }
         }
     """#,

@@ -72,6 +72,7 @@ async fn smoke() {
                 severity: MamoruIncidentSeverity::Info,
                 message: "Test".to_string(),
                 address: "".to_string(),
+                tx_hash: "tx_hash_from_report".to_string(),
                 data: Default::default(),
             },
         })

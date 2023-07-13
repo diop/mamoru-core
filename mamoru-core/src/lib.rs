@@ -8,7 +8,7 @@ pub use daemon::{
     assembly_script,
     incident::{Incident, IncidentSeverity},
     sql::IncidentData,
-    Daemon, DaemonParameters,
+    Daemon, DaemonParameters, DaemonVersions, VerifyCtx, Version,
 };
 pub use errors::{DataError, RenderError, ValueError};
 

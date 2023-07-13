@@ -1,6 +1,6 @@
 {
   "name": "@mamoru-ai/mamoru-sui-sdk-as",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,7 @@
     }
   },
   "dependencies": {
-    "@mamoru-ai/mamoru-sdk-as": "^0.6.0",
+    "@mamoru-ai/mamoru-sdk-as": "^0.7.0",
     "@wapc/as-msgpack": "^0.1.15"
   }
 }
