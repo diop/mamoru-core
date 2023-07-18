@@ -31,22 +31,22 @@ pub struct Event {
     #[schema(type = "DataType::Utf8")]
     pub address: String,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub topic0: Vec<u8>,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub topic1: Vec<u8>,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub topic2: Vec<u8>,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub topic3: Vec<u8>,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub topic4: Vec<u8>,
 
     // supplied by the contract, usually ABI-encoded
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub data: Vec<u8>,
 }

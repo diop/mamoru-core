@@ -35,6 +35,6 @@ pub struct CallTrace {
     #[schema(type = "DataType::UInt64")]
     pub gas_used: u64,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub input: Vec<u8>,
 }

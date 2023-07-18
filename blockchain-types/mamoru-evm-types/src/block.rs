@@ -29,7 +29,7 @@ pub struct Block {
     #[schema(type = "DataType::UInt64")]
     pub timestamp: u64,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub block_reward: Vec<u8>,
 
     #[schema(type = "DataType::Utf8")]

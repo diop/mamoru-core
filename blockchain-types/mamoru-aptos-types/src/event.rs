@@ -17,6 +17,6 @@ pub struct Event {
     #[schema(type = "DataType::Utf8", rename = "type")]
     pub typ: String,
 
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub data: Vec<u8>,
 }

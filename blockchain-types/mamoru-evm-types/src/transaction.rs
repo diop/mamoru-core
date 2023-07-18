@@ -56,7 +56,7 @@ pub struct Transaction {
     pub gas_used: u64,
 
     // Data returns the input data of the transaction.
-    #[schema(type = "DataType::Binary")]
+    #[schema(type = "DataType::LargeBinary")]
     pub input: Vec<u8>,
 
     // Size returns the true RLP encoded storage size of the transaction, either by
