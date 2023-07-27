@@ -250,14 +250,19 @@ impl MessageClient {
                     )
                 };
 
-                let tx = report.tx.map(|tx| Transaction {
-                    tx_id: tx.tx_id,
-                    hash: if !report.incident.tx_hash.is_empty() {
-                        report.incident.tx_hash
-                    } else {
-                        tx.hash
-                    },
-                });
+                let tx = {
+                    let sniffer_tx_info = report.tx.unwrap_or_default();
+                    let reported_tx_hash = report.incident.tx_hash;
+
+                    Transaction {
+                        tx_id: sniffer_tx_info.tx_id,
+                        hash: if !reported_tx_hash.is_empty() {
+                            reported_tx_hash.clone()
+                        } else {
+                            sniffer_tx_info.hash
+                        },
+                    }
+                };
 
                 MsgReportIncident {
                     creator: sniffer.clone(),
@@ -268,7 +273,7 @@ impl MessageClient {
                             source_type: report.source.into(),
                         }),
                         block: report.block,
-                        tx,
+                        tx: Some(tx),
                         chain: Some(Chain {
                             chain_type: report.chain.into(),
                         }),
