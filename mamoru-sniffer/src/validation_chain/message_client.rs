@@ -257,7 +257,7 @@ impl MessageClient {
                     Transaction {
                         tx_id: sniffer_tx_info.tx_id,
                         hash: if !reported_tx_hash.is_empty() {
-                            reported_tx_hash.clone()
+                            reported_tx_hash
                         } else {
                             sniffer_tx_info.hash
                         },
