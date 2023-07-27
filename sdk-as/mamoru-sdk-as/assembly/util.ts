@@ -86,6 +86,9 @@ export function hexToU256(hex: string): u256 {
         hex = hex.slice(2);
     }
 
+    // Prepend 0's to make the string length to be 64.
+    hex = hex.padStart(64, "0");
+
     // Initialize an array to hold the u64 values.
     let result: u64[] = new Array<u64>(4).fill(0);
 

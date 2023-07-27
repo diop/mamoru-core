@@ -18,4 +18,10 @@ describe("hexToU256", () => {
 
         expect(number.toString(16)).toBe("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     });
+
+    test("Short u256", () => {
+        const number = hexToU256("0x4a221e700");
+
+        expect(number.toString(10)).toBe("19900000000");
+    });
 });
