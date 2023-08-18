@@ -29,4 +29,13 @@ impl IncidentSeverity {
             _ => None,
         }
     }
+
+    pub fn to_str(&self) -> &str {
+        match self {
+            Self::Info => "info",
+            Self::Warning => "warning",
+            Self::Error => "error",
+            Self::Alert => "alert",
+        }
+    }
 }

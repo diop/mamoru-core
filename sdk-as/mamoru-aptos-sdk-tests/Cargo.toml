@@ -8,9 +8,9 @@ edition = "2021"
 
 [dev-dependencies]
 env_logger = "0.10"
+mamoru-aptos-types = { path = "../../blockchain-types/mamoru-aptos-types" }
 mamoru-core = { path = "../../mamoru-core", features = ["testing"] }
 mamoru-core-test-utils = { path = "../../mamoru-core-test-utils" }
-mamoru-aptos-types = { path = "../../blockchain-types/mamoru-aptos-types" }
 test-log = { version = "0.2", features = ["trace"] }
 tokio = { workspace = true }
 tracing = "0.1"
