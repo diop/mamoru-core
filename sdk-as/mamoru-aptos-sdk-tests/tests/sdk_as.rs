@@ -105,6 +105,7 @@ fn aptos_ctx() -> BlockchainData<AptosCtx> {
     ]);
 
     builder.set_tx_data("test_tx", "test_digest");
+    builder.set_statistics(0, 1, 2, 3);
 
     builder.build().unwrap()
 }

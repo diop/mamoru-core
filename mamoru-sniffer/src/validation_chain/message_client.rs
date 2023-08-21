@@ -21,7 +21,9 @@ pub use crate::validation_chain::proto::validation_chain::{
     MsgReportIncidentResponse, MsgSubscribeDaemonsResponse, MsgUnregisterSnifferResponse,
     Transaction as TransactionId,
 };
-use crate::validation_chain::proto::validation_chain::{MetadataSdkVersion, Transaction};
+use crate::validation_chain::proto::validation_chain::{
+    MetadataSdkVersion, MsgMarkSnifferStatisticResponse, SnifferStatistic, Transaction,
+};
 use crate::validation_chain::SendMode;
 use crate::{
     errors::ValidationClientError,
@@ -44,9 +46,10 @@ use crate::{
                 DaemonMetadataContentQuery as ProtoDaemonMetadataContentQuery,
                 DaemonMetadataContentType, DaemonMetadataParemeter,
                 DaemonRegisterCommandRequestDto, DaemonsSubscribeCommandRequestDto,
-                IncidentReportCommandRequestDto, MsgCreateDaemonMetadata, MsgRegisterDaemon,
-                MsgRegisterSniffer, MsgReportIncident, MsgSubscribeDaemons, MsgUnregisterSniffer,
-                SnifferRegisterCommandRequestDto, SnifferUnregisterCommandRequestDto, Source,
+                IncidentReportCommandRequestDto, MsgCreateDaemonMetadata, MsgMarkSnifferStatistic,
+                MsgRegisterDaemon, MsgRegisterSniffer, MsgReportIncident, MsgSubscribeDaemons,
+                MsgUnregisterSniffer, SnifferRegisterCommandRequestDto,
+                SnifferUnregisterCommandRequestDto, Source,
             },
         },
         ClientResult, DaemonParameter, DaemonRelay,
@@ -100,6 +103,14 @@ pub struct DaemonMetadataContentQuery {
     pub query: String,
     pub incident_message: String,
     pub severity: IncidentSeverity,
+}
+#[derive(Debug)]
+pub struct StatisticsReport {
+    pub source: SourceType,
+    pub blocks: u64,
+    pub transactions: u64,
+    pub events: u64,
+    pub call_traces: u64,
 }
 
 /// Cache for account data, that is required to specify
@@ -386,6 +397,39 @@ impl MessageClient {
             .await?;
 
         Ok(result.remove(0))
+    }
+
+    /// Mark sniffer statistic
+    pub async fn mark_sniffer_statistic(
+        &self,
+        statistics: impl IntoIterator<Item = StatisticsReport>,
+    ) -> ClientResult<Vec<MsgMarkSnifferStatisticResponse>> {
+        let sniffer = self.config.address().to_string();
+
+        let report_messages: Vec<_> = statistics
+            .into_iter()
+            .map(|stat: StatisticsReport| MsgMarkSnifferStatistic {
+                creator: sniffer.clone(),
+                statistics: Some(SnifferStatistic {
+                    sniffer_id: sniffer.clone(),
+                    source: Some(Source {
+                        source_type: stat.source as i32,
+                    }),
+                    created_at: "".to_string(),
+                    blocks: stat.blocks,
+                    transactions: stat.transactions,
+                    events: stat.events,
+                    call_traces: stat.call_traces,
+                }),
+            })
+            .collect();
+        let messages_len = report_messages.len();
+
+        let result = self
+            .sign_and_broadcast_txs(report_messages, messages_len)
+            .await?;
+
+        Ok(result)
     }
 
     /// Unlike queries, commands in Cosmos must be signed and published as transactions.

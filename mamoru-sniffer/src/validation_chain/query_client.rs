@@ -4,6 +4,7 @@ pub use crate::validation_chain::{
         validation_chain::{
             DaemonMetadata, DaemonParameter, DaemonQueryResponseDto, DaemonRelay,
             IncidentQueryResponseDto, QueryListDaemonsResponse, SnifferQueryResponseDto,
+            SnifferStatistic,
         },
     },
     ChainType,
@@ -12,8 +13,8 @@ pub use crate::validation_chain::{
 use crate::validation_chain::{
     proto::validation_chain::{
         query_client::QueryClient as GeneratedQueryClient, Chain, QueryListDaemonsRequest,
-        QueryListIncidentsRequest, QueryListIncidentsResponse, QueryListSniffersRequest,
-        QueryListSniffersResponse,
+        QueryListIncidentsRequest, QueryListIncidentsResponse, QueryListSnifferStatisticsRequest,
+        QueryListSnifferStatisticsResponse, QueryListSniffersRequest, QueryListSniffersResponse,
     },
     ClientResult, QueryClientConfig,
 };
@@ -95,6 +96,12 @@ impl QueryClient {
         }
     }
 
+    as_stream! {
+        pub fn list_statistics() -> impl Stream<Item = ClientResult<SnifferStatistic>> {
+            list_statistics_paginated, statistics
+        }
+    }
+
     async fn list_daemons_paginated(
         &self,
         chain: ChainType,
@@ -137,6 +144,21 @@ impl QueryClient {
 
         let response = client
             .list_incidents(QueryListIncidentsRequest {
+                pagination: Some(pagination),
+            })
+            .await?;
+
+        Ok(response.into_inner())
+    }
+
+    async fn list_statistics_paginated(
+        &self,
+        pagination: PageRequest,
+    ) -> ClientResult<QueryListSnifferStatisticsResponse> {
+        let mut client = self.client.clone();
+
+        let response = client
+            .list_sniffer_statistics(QueryListSnifferStatisticsRequest {
                 pagination: Some(pagination),
             })
             .await?;

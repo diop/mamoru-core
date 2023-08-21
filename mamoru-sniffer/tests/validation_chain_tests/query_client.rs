@@ -25,4 +25,10 @@ async fn smoke() {
         .try_collect::<Vec<_>>()
         .await
         .expect("List incidents error");
+
+    let _ = client
+        .list_statistics()
+        .try_collect::<Vec<_>>()
+        .await
+        .expect("List statistics error");
 }

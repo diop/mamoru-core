@@ -1,9 +1,10 @@
 /// Required to sign a transaction for each message type
 use crate::validation_chain::proto::validation_chain::{
-    MsgCreateDaemonMetadata, MsgCreateDaemonMetadataResponse, MsgRegisterDaemon,
-    MsgRegisterDaemonResponse, MsgRegisterSniffer, MsgRegisterSnifferResponse, MsgReportIncident,
-    MsgReportIncidentResponse, MsgSubscribeDaemons, MsgSubscribeDaemonsResponse,
-    MsgUnregisterSniffer, MsgUnregisterSnifferResponse,
+    MsgCreateDaemonMetadata, MsgCreateDaemonMetadataResponse, MsgMarkSnifferStatistic,
+    MsgMarkSnifferStatisticResponse, MsgRegisterDaemon, MsgRegisterDaemonResponse,
+    MsgRegisterSniffer, MsgRegisterSnifferResponse, MsgReportIncident, MsgReportIncidentResponse,
+    MsgSubscribeDaemons, MsgSubscribeDaemonsResponse, MsgUnregisterSniffer,
+    MsgUnregisterSnifferResponse,
 };
 use cosmrs::proto::traits::TypeUrl;
 
@@ -54,4 +55,12 @@ impl TypeUrl for MsgCreateDaemonMetadata {
 impl TypeUrl for MsgCreateDaemonMetadataResponse {
     const TYPE_URL: &'static str =
         "/validationchain.validationchain.MsgCreateDaemonMetadataResponse";
+}
+
+impl TypeUrl for MsgMarkSnifferStatistic {
+    const TYPE_URL: &'static str = "/validationchain.validationchain.MsgMarkSnifferStatistic";
+}
+impl TypeUrl for MsgMarkSnifferStatisticResponse {
+    const TYPE_URL: &'static str =
+        "/validationchain.validationchain.MsgMarkSnifferStatisticResponse";
 }

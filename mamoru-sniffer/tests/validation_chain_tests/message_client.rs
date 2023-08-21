@@ -3,7 +3,8 @@ use test_log::test;
 use mamoru_core::{Incident, IncidentSeverity as MamoruIncidentSeverity};
 use mamoru_sniffer::validation_chain::{
     BlockId, ChainType, DaemonMetadataContent, DaemonMetadataContentQuery, DaemonMetadataType,
-    IncidentReport, IncidentSeverity, RegisterDaemonMetadataRequest, SourceType, TransactionId,
+    IncidentReport, IncidentSeverity, RegisterDaemonMetadataRequest, SourceType, StatisticsReport,
+    TransactionId,
 };
 
 use crate::validation_chain_tests::message_client;
@@ -82,6 +83,19 @@ async fn smoke() {
         .report_incidents(incidents)
         .await
         .expect("Report incidents error");
+
+    let statistic: Vec<_> = vec![StatisticsReport {
+        source: SourceType::Mempool,
+        blocks: 1,
+        transactions: 3,
+        events: 3,
+        call_traces: 9,
+    }];
+
+    client
+        .mark_sniffer_statistic(statistic)
+        .await
+        .expect("Mark sniffer statistic error");
 
     client
         .unregister_sniffer()

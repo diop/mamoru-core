@@ -74,6 +74,7 @@ pub struct BlockchainDataBuilder<T> {
     source: DataSource,
     tx: Option<(Id, Hash)>,
     block: Option<(Id, Hash)>,
+    statistics: Option<Statistics>,
 }
 
 impl<T: BlockchainCtx> Default for BlockchainDataBuilder<T> {
@@ -87,7 +88,7 @@ pub type TableDef = (&'static str, RecordBatch);
 pub type Id = String;
 pub type Hash = String;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum DataSource {
     Mempool,
     Block,
@@ -100,6 +101,7 @@ impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
             source: DataSource::Block,
             tx: None,
             block: None,
+            statistics: None,
         }
     }
 
@@ -119,6 +121,21 @@ impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
         self.block = Some((block_id.into(), block_hash.into()));
     }
 
+    pub fn set_statistics(
+        &mut self,
+        blocks: u64,
+        transactions: u64,
+        events: u64,
+        call_traces: u64,
+    ) {
+        self.statistics = Some(Statistics {
+            blocks,
+            transactions,
+            events,
+            call_traces,
+        });
+    }
+
     pub fn build(self) -> Result<BlockchainData<T>, DataError> {
         let session = setup_session();
 
@@ -130,6 +147,7 @@ impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
             data: Arc::new(self.data),
             session,
             source: self.source,
+            statistics: self.statistics,
             tx: self.tx,
             block: self.block,
         })
@@ -153,11 +171,20 @@ impl<T: BlockchainCtx> BlockchainDataBuilder<T> {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Statistics {
+    pub blocks: u64,
+    pub transactions: u64,
+    pub events: u64,
+    pub call_traces: u64,
+}
+
 /// Holds the blockchain data.
 pub struct BlockchainData<T> {
     data: Arc<T>,
     session: SessionContext,
     source: DataSource,
+    statistics: Option<Statistics>,
     tx: Option<(Id, Hash)>,
     block: Option<(Id, Hash)>,
 }
@@ -170,6 +197,7 @@ impl<T> Clone for BlockchainData<T> {
             tx: self.tx.clone(),
             block: self.block.clone(),
             source: self.source,
+            statistics: self.statistics,
         }
     }
 }
@@ -185,6 +213,10 @@ impl<T> BlockchainData<T> {
 
     pub fn source(&self) -> DataSource {
         self.source
+    }
+
+    pub fn statistics(&self) -> Option<Statistics> {
+        self.statistics
     }
 
     pub(crate) fn session(&self) -> &SessionContext {

@@ -2,7 +2,7 @@ pub use blockchain_data::{
     serialize::{deserialize_data, serialize_data},
     value::{StructValue, Value, ValueData},
     BlockchainCtx, BlockchainData, BlockchainDataBuilder, BlockchainSpecificImports,
-    BlockchainTableItem, CtxImportError, CtxImportFn, DataSource, TableDef,
+    BlockchainTableItem, CtxImportError, CtxImportFn, DataSource, Statistics, TableDef,
 };
 pub use daemon::{
     assembly_script,

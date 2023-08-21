@@ -19,6 +19,7 @@ use mamoru_sniffer::{
 mod message_client;
 mod query_client;
 mod sniffer;
+mod statistics;
 
 /// Bech32 prefix for an account
 const ACCOUNT_PREFIX: &str = "mamoru";
@@ -94,11 +95,28 @@ async fn sniffer(chain_type: ChainType) -> Sniffer {
         daemons_update_interval_secs: SnifferConfig::default_daemons_update_interval_secs(),
         incidents_send_interval_millis: SnifferConfig::default_incidents_send_interval_millis(),
         max_incident_batch_size: SnifferConfig::default_max_incident_batch_size(),
+        statistics_send_interval_secs: SnifferConfig::default_statistics_send_interval_secs(),
+        statistics_buffer_size: SnifferConfig::default_statistics_buffer_size(),
     })
     .await
     .expect("Failed to create Sniffer")
 }
 
+async fn sniffer_with_interval(chain_type: ChainType) -> Sniffer {
+    Sniffer::new(SnifferConfig {
+        message_config: message_client_config().await,
+        query_config: query_client_config(),
+        chain_type,
+        incident_buffer_size: SnifferConfig::default_incident_buffer_size(),
+        daemons_update_interval_secs: SnifferConfig::default_daemons_update_interval_secs(),
+        incidents_send_interval_millis: SnifferConfig::default_incidents_send_interval_millis(),
+        max_incident_batch_size: SnifferConfig::default_max_incident_batch_size(),
+        statistics_send_interval_secs: Some(5u64),
+        statistics_buffer_size: SnifferConfig::default_statistics_buffer_size(),
+    })
+    .await
+    .expect("Failed to create Sniffer")
+}
 async fn query_client() -> QueryClient {
     QueryClient::connect(query_client_config())
         .await

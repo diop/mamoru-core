@@ -14,7 +14,8 @@ use tracing::{debug, error, info, warn};
 
 use mamoru_core::{BlockchainCtx, BlockchainData, Daemon, DataSource};
 
-use crate::validation_chain::{BlockId, SourceType};
+use crate::statistics_bg_task::{BgStatisticsConfig, StatisticBgTask};
+use crate::validation_chain::{BlockId, SourceType, StatisticsReport};
 use crate::{
     errors::SnifferError,
     from_env,
@@ -45,6 +46,12 @@ pub struct SnifferConfig {
 
     #[serde(default = "SnifferConfig::default_max_incident_batch_size")]
     pub max_incident_batch_size: usize,
+
+    #[serde(default = "SnifferConfig::default_statistics_send_interval_secs")]
+    pub statistics_send_interval_secs: Option<u64>,
+
+    #[serde(default = "SnifferConfig::default_statistics_buffer_size")]
+    pub statistics_buffer_size: usize,
 }
 
 impl SnifferConfig {
@@ -69,15 +76,23 @@ impl SnifferConfig {
     pub fn default_max_incident_batch_size() -> usize {
         20
     }
+    pub fn default_statistics_send_interval_secs() -> Option<u64> {
+        None
+    }
+    pub fn default_statistics_buffer_size() -> usize {
+        256
+    }
 }
 
-type SnifferResult<T> = Result<T, SnifferError>;
+pub type SnifferResult<T> = Result<T, SnifferError>;
 
 /// Defines an API for Rule matching and incident reporting.
 pub struct Sniffer {
     report_tx: Sender<IncidentReport>,
     rules: Arc<RwLock<Vec<Daemon>>>,
     chain_type: ChainType,
+
+    statistic_tx: Sender<StatisticsReport>,
 }
 
 impl Sniffer {
@@ -87,24 +102,44 @@ impl Sniffer {
         let rules = Arc::new(RwLock::new(vec![]));
         let (report_tx, report_rx) = tokio::sync::mpsc::channel(config.incident_buffer_size);
 
+        let bg_task_config = BgTaskConfig {
+            daemons_update_interval: Duration::from_secs(config.daemons_update_interval_secs),
+            incident_send_interval: Duration::from_millis(config.incidents_send_interval_millis),
+            max_incident_batch_size: config.max_incident_batch_size,
+        };
+
+        let message_client = MessageClient::connect(config.message_config.clone()).await?;
+
         let bg_task = SnifferBgTask::new(
-            MessageClient::connect(config.message_config).await?,
+            message_client.clone(),
             QueryClient::connect(config.query_config).await?,
             Arc::clone(&rules),
             config.chain_type,
             report_rx,
-            Duration::from_secs(config.daemons_update_interval_secs),
-            Duration::from_millis(config.incidents_send_interval_millis),
-            config.max_incident_batch_size,
+            bg_task_config,
         )
         .await?;
 
         tokio::spawn(async move { bg_task.run().await });
 
+        let (statistic_tx, statistic_rx) =
+            tokio::sync::mpsc::channel(config.statistics_buffer_size);
+
+        let statistics_bg_config = BgStatisticsConfig {
+            send_interval_sec: config.statistics_send_interval_secs,
+            buffer_size: config.statistics_buffer_size,
+        };
+
+        let statistics_bg_task =
+            StatisticBgTask::new(message_client, statistic_rx, statistics_bg_config).await;
+
+        tokio::spawn(async move { statistics_bg_task.run().await });
+
         Ok(Self {
             report_tx,
             rules,
             chain_type: config.chain_type,
+            statistic_tx,
         })
     }
 
@@ -166,7 +201,39 @@ impl Sniffer {
             .collect();
 
         futures::future::join_all(futures).await;
+
+        if let Some(statistics) = ctx.statistics() {
+            self.send_statistic(StatisticsReport {
+                source: match ctx.source() {
+                    DataSource::Mempool => SourceType::Mempool,
+                    DataSource::Block => SourceType::Block,
+                },
+                blocks: statistics.blocks,
+                transactions: statistics.transactions,
+                events: statistics.events,
+                call_traces: statistics.call_traces,
+            });
+        }
     }
+
+    fn send_statistic(&self, statistics: StatisticsReport) {
+        match self.statistic_tx.try_send(statistics) {
+            Ok(_) => {}
+            Err(TrySendError::Full(_)) => {
+                error!("Statistic channel is full. It may happen because of an event spike or statistic reporting is stuck.");
+            }
+            Err(TrySendError::Closed(_)) => {
+                // This is non-recoverable error, we should panic here.
+                panic!("Statistic channel is closed.");
+            }
+        }
+    }
+}
+
+struct BgTaskConfig {
+    daemons_update_interval: Duration,
+    incident_send_interval: Duration,
+    max_incident_batch_size: usize,
 }
 
 /// An entity to perform slow IO-bound tasks
@@ -177,22 +244,17 @@ struct SnifferBgTask {
     daemons: Arc<RwLock<Vec<Daemon>>>,
     chain_type: ChainType,
     report_rx: Receiver<IncidentReport>,
-    daemons_update_interval: Duration,
-    incident_send_interval: Duration,
-    max_incident_batch_size: usize,
+    task_config: BgTaskConfig,
 }
 
 impl SnifferBgTask {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn new(
         message_client: MessageClient,
         query_client: QueryClient,
         daemons: Arc<RwLock<Vec<Daemon>>>,
         chain_type: ChainType,
         report_rx: Receiver<IncidentReport>,
-        daemons_update_interval: Duration,
-        incident_send_interval: Duration,
-        max_incident_batch_size: usize,
+        task_config: BgTaskConfig,
     ) -> SnifferResult<Self> {
         message_client.register_sniffer(chain_type).await?;
 
@@ -202,9 +264,7 @@ impl SnifferBgTask {
             daemons,
             chain_type,
             report_rx,
-            daemons_update_interval,
-            incident_send_interval,
-            max_incident_batch_size,
+            task_config,
         };
 
         task.update_daemons().await?;
@@ -224,13 +284,13 @@ impl SnifferBgTask {
         );
 
         let mut daemons_interval = tokio::time::interval_at(
-            Instant::now().add(self.daemons_update_interval),
-            self.daemons_update_interval,
+            Instant::now().add(self.task_config.daemons_update_interval),
+            self.task_config.daemons_update_interval,
         );
 
         let mut incidents_interval = tokio::time::interval_at(
-            Instant::now().add(self.incident_send_interval),
-            self.incident_send_interval,
+            Instant::now().add(self.task_config.incident_send_interval),
+            self.task_config.incident_send_interval,
         );
 
         loop {
@@ -276,7 +336,7 @@ impl SnifferBgTask {
     /// Receives incidents from the channel up to `max_incident_batch_size`.
     /// Returns `TryRecvError::Disconnected` if the channel is closed.
     fn receive_incidents(&mut self) -> Result<Vec<IncidentReport>, TryRecvError> {
-        let mut items = Vec::with_capacity(self.max_incident_batch_size);
+        let mut items = Vec::with_capacity(self.task_config.max_incident_batch_size);
 
         loop {
             match self.report_rx.try_recv() {
@@ -285,7 +345,7 @@ impl SnifferBgTask {
                 Err(TryRecvError::Disconnected) => return Err(TryRecvError::Disconnected),
             }
 
-            if items.len() >= self.max_incident_batch_size {
+            if items.len() >= self.task_config.max_incident_batch_size {
                 break;
             }
         }

@@ -50,6 +50,19 @@ fn evm_blockchain_data_builder_set_mempool_source(builder: &mut FfiEvmBlockchain
     builder.inner.set_mempool_source();
 }
 
+#[ffi_export]
+fn evm_blockchain_data_builder_set_statistics(
+    builder: &mut FfiEvmBlockchainDataBuilder,
+    blocks: u64,
+    transactions: u64,
+    events: u64,
+    call_traces: u64,
+) {
+    builder
+        .inner
+        .set_statistics(blocks, transactions, events, call_traces);
+}
+
 /// Frees `builder` argument.
 #[ffi_export]
 fn evm_blockchain_data_builder_finish(

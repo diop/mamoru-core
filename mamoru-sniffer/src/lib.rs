@@ -1,7 +1,9 @@
 mod errors;
 mod sniffer;
 
+mod statistics_bg_task;
 pub mod validation_chain;
+
 pub use errors::*;
 pub use sniffer::*;
 pub mod core {

@@ -67,6 +67,7 @@ pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainData<TestCtx> {
         },
     ]);
 
+    builder.set_statistics(1231, 2341, 3451, 4561);
     builder.set_tx_data(format!("{}", tx_seq), digest.clone());
     builder.set_block_data(format!("{}", tx_seq), digest);
 

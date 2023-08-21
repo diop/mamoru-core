@@ -155,7 +155,7 @@ impl ChainConfig {
     }
 
     fn default_tx_gas_limit() -> u64 {
-        100_000
+        250_000
     }
 
     fn default_tx_fee_amount() -> u128 {

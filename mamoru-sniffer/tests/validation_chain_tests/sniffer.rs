@@ -99,7 +99,7 @@ async fn register_daemon(chain: ChainType) -> String {
     register_daemon_response.daemon_id
 }
 
-fn random_string() -> String {
+pub fn random_string() -> String {
     thread_rng()
         .sample_iter(&Alphanumeric)
         .take(12)
