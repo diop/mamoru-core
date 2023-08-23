@@ -3,7 +3,7 @@ mod parse;
 mod playbook_dto;
 
 use crate::error::ParseError;
-use crate::parse::{parse_confirmations, parse_playbook, parse_trigger};
+use crate::parse::{make_engine_response, parse_confirmations, parse_playbook, parse_trigger};
 use chrono::{DateTime, Utc};
 use playbook_engine::Engine;
 use safer_ffi::prelude::*;
@@ -58,6 +58,12 @@ impl FfiJsonResult {
     }
 }
 
+/// Frees a validation result
+#[ffi_export]
+fn ffi_drop_json_result(result: FfiJsonResult) {
+    drop(result)
+}
+
 /// Validates a playbook
 #[ffi_export]
 fn ffi_validate_playbook<'a>(playbook_json: char_p::Ref<'a>) -> FfiJsonResult {
@@ -101,9 +107,10 @@ fn ffi_playbook_start<'a>(
 
     let mut engine = engine();
 
-    let result = engine.start_playbook(now, run_id.to_string(), playbook, trigger);
-
-    result.into()
+    match engine.start_playbook(now, run_id.to_string(), playbook, trigger) {
+        Ok(result) => FfiJsonResult::ok(make_engine_response(result)),
+        Err(err) => FfiJsonResult::error(err),
+    }
 }
 
 /// Resumes a playbook
@@ -130,9 +137,10 @@ fn ffi_playbook_resume<'a>(
 
     let mut engine = engine();
 
-    let result = engine.resume_playbook(now, run_id.to_string(), confirmations);
-
-    result.into()
+    match engine.resume_playbook(now, run_id.to_string(), confirmations) {
+        Ok(result) => FfiJsonResult::ok(make_engine_response(result)),
+        Err(err) => FfiJsonResult::error(err),
+    }
 }
 
 fn parse_datetime(datetime_rfc3339: &str) -> Result<DateTime<Utc>, ParseError> {

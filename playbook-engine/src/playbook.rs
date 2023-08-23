@@ -1,11 +1,9 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-
-use mamoru_core::IncidentSeverity;
-
 use crate::condition::Condition;
 use crate::task::Task;
+use chrono::{DateTime, Utc};
+use mamoru_core::IncidentSeverity;
+use serde::Deserialize;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,8 +45,7 @@ pub struct SingleStep {
     pub params: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub enum PlaybookRunStatus {
     Running,
     Success {
@@ -61,15 +58,13 @@ pub enum PlaybookRunStatus {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub struct PlaybookRun {
     pub status: PlaybookRunStatus,
     pub steps: BTreeMap<u32, StepRun>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub struct StepRun {
     pub step_seq: u32,
     pub started_at: Option<DateTime<Utc>>,
@@ -79,8 +74,7 @@ pub struct StepRun {
 
 pub type StepOutputs = BTreeMap<String, String>;
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug)]
 pub enum StepRunStatus {
     Pending,
     Skipped,
@@ -131,10 +125,9 @@ impl PlaybookRun {
     }
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug)]
 pub struct ExternalAction {
-    pub id: u32,
+    pub step_seq: u32,
     pub action: String,
     pub params: BTreeMap<String, String>,
 }
@@ -187,4 +180,15 @@ pub(crate) fn make_step_runs(steps: &[Step], status: StepRunStatus) -> BTreeMap<
     }
 
     step_runs
+}
+
+pub enum RunConfirmationStatus {
+    Success { outputs: StepOutputs },
+    Failed,
+}
+
+pub struct RunConfirmation {
+    pub logs: Vec<String>,
+    pub status: RunConfirmationStatus,
+    pub step_seq: u32,
 }

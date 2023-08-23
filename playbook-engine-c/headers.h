@@ -29,6 +29,13 @@ typedef struct FfiJsonResult {
 } FfiJsonResult_t;
 
 /** \brief
+ *  Frees a validation result
+ */
+void
+ffi_drop_json_result (
+    FfiJsonResult_t result);
+
+/** \brief
  *  Resumes a playbook
  *  Arguments are passed as JSON strings
  *  Date is RFC3339

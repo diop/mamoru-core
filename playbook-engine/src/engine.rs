@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 use handlebars::Handlebars;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::condition::{Context, Incident, PipelineStatus};
 use crate::error::{ParamsEvalError, RunError};
@@ -10,22 +10,10 @@ use crate::playbook::{
     fail_downstream_tasks, skip_downstream_tasks, Playbook, SingleStep, Step, Trigger,
 };
 use crate::task::TaskStatus;
-use crate::{ExternalAction, PlaybookRun, PlaybookRunStatus, StepOutputs, StepRun, StepRunStatus};
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum RunConfirmationStatus {
-    Success { outputs: StepOutputs },
-    Failed,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunConfirmation {
-    logs: Vec<String>,
-    status: RunConfirmationStatus,
-    step_seq: u32,
-}
+use crate::{
+    ExternalAction, PlaybookRun, PlaybookRunStatus, RunConfirmation, RunConfirmationStatus,
+    StepOutputs, StepRun, StepRunStatus,
+};
 
 struct RunState {
     trigger: Trigger,
@@ -291,7 +279,7 @@ impl<'a> Engine<'a> {
                         self.fail_step(ctx, step_run, Some(message));
                     }
                     TaskStatus::External {
-                        step_seq: id,
+                        step_seq,
                         action,
                         params,
                     } => {
@@ -299,7 +287,11 @@ impl<'a> Engine<'a> {
                             waiting_for_confirmation: true,
                         };
 
-                        return Some(ExternalAction { id, action, params });
+                        return Some(ExternalAction {
+                            step_seq,
+                            action,
+                            params,
+                        });
                     }
                 }
             }

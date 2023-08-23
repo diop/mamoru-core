@@ -3377,7 +3377,6 @@ dependencies = [
  "maplit",
  "nom",
  "serde",
- "serde_json",
  "serde_yaml",
  "thiserror",
 ]

@@ -1,8 +1,11 @@
 use crate::error::ParseError;
-use crate::playbook_dto::{PlaybookDto, StepDto};
+use crate::playbook_dto::{
+    EngineResponseDto, ExternalActionDto, PlaybookDto, PlaybookRunDto, RunConfirmationDto,
+    RunConfirmationStatusDto, StepDto, StepParamDto, StepRunDto,
+};
 use playbook_engine::{
-    task_registry, Condition, ParallelBlock, Playbook, RunConfirmation, SingleStep, Step,
-    StepsBlock, Trigger,
+    task_registry, Condition, ExternalAction, ParallelBlock, Playbook, PlaybookRun,
+    RunConfirmation, RunConfirmationStatus, SingleStep, Step, StepsBlock, Trigger,
 };
 
 pub fn parse_playbook(playbook_json: &str) -> Result<Playbook, ParseError> {
@@ -18,7 +21,67 @@ pub fn parse_trigger(trigger_json: &str) -> Result<Trigger, ParseError> {
 }
 
 pub fn parse_confirmations(confirmations_json: &str) -> Result<Vec<RunConfirmation>, ParseError> {
-    serde_json::from_str(confirmations_json).map_err(ParseError::JsonParse)
+    let confirmations: Vec<RunConfirmationDto> =
+        serde_json::from_str(confirmations_json).map_err(ParseError::JsonParse)?;
+
+    let result = confirmations
+        .into_iter()
+        .map(|confirmation| RunConfirmation {
+            logs: confirmation.logs,
+            step_seq: confirmation.step_seq,
+            status: match confirmation.status {
+                RunConfirmationStatusDto::Success { outputs } => RunConfirmationStatus::Success {
+                    outputs: outputs
+                        .into_iter()
+                        .map(|output| (output.name, output.value))
+                        .collect(),
+                },
+                RunConfirmationStatusDto::Failed => RunConfirmationStatus::Failed,
+            },
+        })
+        .collect();
+
+    Ok(result)
+}
+
+pub fn make_engine_response(response: (PlaybookRun, Vec<ExternalAction>)) -> EngineResponseDto {
+    let (run, actions) = response;
+
+    EngineResponseDto {
+        run: make_playbook_run(run),
+        external_actions: make_external_actions(actions),
+    }
+}
+
+fn make_playbook_run(run: PlaybookRun) -> PlaybookRunDto {
+    PlaybookRunDto {
+        status: run.status.into(),
+        steps: run
+            .steps
+            .into_values()
+            .map(|step| StepRunDto {
+                step_seq: step.step_seq,
+                started_at: step.started_at,
+                status: step.status.into(),
+                logs: step.logs,
+            })
+            .collect(),
+    }
+}
+
+fn make_external_actions(actions: Vec<ExternalAction>) -> Vec<ExternalActionDto> {
+    actions
+        .into_iter()
+        .map(|a| ExternalActionDto {
+            step_seq: a.step_seq,
+            action: a.action,
+            params: a
+                .params
+                .into_iter()
+                .map(|(name, value)| StepParamDto { name, value })
+                .collect(),
+        })
+        .collect()
 }
 
 fn parse_step(step_dto: StepDto) -> Result<Step, ParseError> {
