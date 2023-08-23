@@ -34,7 +34,7 @@ typedef struct FfiJsonResult {
  *  Date is RFC3339
  */
 FfiJsonResult_t
-playbook_resume (
+ffi_playbook_resume (
     char const * datetime,
     char const * run_id,
     char const * confirmations_json);
@@ -45,7 +45,7 @@ playbook_resume (
  *  Date is RFC3339
  */
 FfiJsonResult_t
-playbook_start (
+ffi_playbook_start (
     char const * datetime,
     char const * run_id,
     char const * playbook_json,
@@ -55,7 +55,7 @@ playbook_start (
  *  Validates a playbook
  */
 FfiJsonResult_t
-validate_playbook (
+ffi_validate_playbook (
     char const * playbook_json);
 
 
