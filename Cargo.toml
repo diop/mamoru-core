@@ -10,6 +10,8 @@ members = [
     "mamoru-core-test-utils",
     "mamoru-sniffer",
     "mamoru-sniffer-c",
+    "playbook-engine",
+    "playbook-engine-c",
     "query-validator",
     "query-validator-c",
     "sdk-as/mamoru-aptos-sdk-tests",

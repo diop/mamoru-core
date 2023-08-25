@@ -1,0 +1,18 @@
+[package]
+name = "playbook-engine-c"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["lib"]
+
+[features]
+headers = ["safer-ffi/headers"]
+
+[dependencies]
+chrono = { workspace = true, features = ["serde"] }
+playbook-engine = { path = "../playbook-engine" }
+safer-ffi = { version = "0.1.2", features = ["log", "proc_macros"] }
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
+thiserror = "1"

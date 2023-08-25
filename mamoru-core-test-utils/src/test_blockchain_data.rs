@@ -18,7 +18,7 @@ pub fn data_ctx(tx_hash: impl Into<String>) -> BlockchainData<TestCtx> {
     let now = chrono::Utc::now().naive_utc();
 
     let mut builder: BlockchainDataBuilder<TestCtx> = BlockchainDataBuilder::new();
-    let mut data = builder.data_mut();
+    let data = builder.data_mut();
 
     data.tx = Some(TestTransaction {
         seq: tx_seq,
